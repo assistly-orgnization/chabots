@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# stepzen — local config may contain DB credentials
+/stepzen/config.yaml
+
+# local scratch (used for stashing files during rebase)
+/.git-saved/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
