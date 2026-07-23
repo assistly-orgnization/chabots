@@ -27,7 +27,7 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
   const [message, setMessage] = useState<Message[]>([
     {
       id: -1,
-      content: `Hi there! 👋 I'm ${chatbotName}. I'd love to help you out, but first, could you tell me your name?`,
+      content: `Hi there! I'm ${chatbotName}. I'd love to help you out, but first, could you tell me your name?`,
       sender: 'ai',
       created_at: new Date().toISOString(),
       chat_session_id: 0,
@@ -80,7 +80,7 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
 
       const aiMsg: Message = {
         id: Date.now() + 1,
-        content: `It's a pleasure to meet you, ${formMessage}! 😊 Just one more thing—what's your email address so we can stay connected?`,
+        content: `It's a pleasure to meet you, ${formMessage}! Just one more thing—what's your email address so we can stay connected?`,
         chat_session_id: 0,
         sender: 'ai',
         created_at: new Date().toISOString(),
