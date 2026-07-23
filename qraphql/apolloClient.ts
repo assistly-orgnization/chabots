@@ -11,10 +11,11 @@ export const getBaseURL = () => {
     return `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
   }
   
+  
   // Fallback to hardcoded domains in order of preference
   const productionDomains = [
-    "https://assistly-psi.vercel.app",
-    "https://assistly-75sl4u0k3-shimaa95s-projects.vercel.app",
+    "https://chatbot-xi-rose-68.vercel.app",
+    "https://chatbot-mvhlkkhc0-shaimaaalmubarak00-5936s-projects.vercel.app",
     
   ];
   

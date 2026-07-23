@@ -162,6 +162,17 @@ type Query {
       table: "chatbots"
       configuration: "postgresql_config"
     )
+  " Tenant-scoped query: returns only the chatbots owned by the given Clerk user. "
+  " Server-side filter — do not trust the client to scope. "
+  chatbotsListByClerkUserId(clerk_user_id: String!): [Chatbots]
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      query: """
+      SELECT "clerk_user_id", "created_at", "id", "name" FROM "chatbots" WHERE "clerk_user_id" = $1 ORDER BY "created_at" DESC
+      """
+      configuration: "postgresql_config"
+    )
   chatbotsPaginatedList(first: Int, after: Int): [Chatbots]
     @dbquery(
       type: "postgresql"
@@ -265,6 +276,8 @@ Feel free to modify them or aggregate more.
 """
 type Mutation {
   " Mutations for type 'Chat_sessions' "
+  " NOTE: this delete is gated by the operation allowlist in app/api/graphql/route.ts "
+  " and by Clerk auth. Do not call directly from untrusted clients. "
   deleteChat_sessions(id: Int!): Chat_sessions
     @dbquery(
       type: "postgresql"
@@ -306,6 +319,8 @@ type Mutation {
       configuration: "postgresql_config"
     )
   " Mutations for type 'Chatbot_characteristics' "
+  " NOTE: this delete is gated by the operation allowlist in app/api/graphql/route.ts "
+  " and by Clerk auth. Do not call directly from untrusted clients. "
   deleteChatbot_characteristics(id: Int!): Chatbot_characteristics
     @dbquery(
       type: "postgresql"
@@ -347,6 +362,8 @@ type Mutation {
       configuration: "postgresql_config"
     )
   " Mutations for type 'Chatbots' "
+  " NOTE: this delete is gated by the operation allowlist in app/api/graphql/route.ts "
+  " and by Clerk auth. Do not call directly from untrusted clients. "
   deleteChatbots(id: Int!): Chatbots
     @dbquery(
       type: "postgresql"
@@ -388,6 +405,8 @@ type Mutation {
       configuration: "postgresql_config"
     )
   " Mutations for type 'Guests' "
+  " NOTE: this delete is gated by the operation allowlist in app/api/graphql/route.ts "
+  " and by Clerk auth. Do not call directly from untrusted clients. "
   deleteGuests(id: Int!): Guests
     @dbquery(
       type: "postgresql"
@@ -425,6 +444,8 @@ type Mutation {
       configuration: "postgresql_config"
     )
   " Mutations for type 'Messages' "
+  " NOTE: this delete is gated by the operation allowlist in app/api/graphql/route.ts "
+  " and by Clerk auth. Do not call directly from untrusted clients. "
   deleteMessages(id: Int!): Messages
     @dbquery(
       type: "postgresql"

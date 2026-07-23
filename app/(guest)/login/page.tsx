@@ -4,11 +4,11 @@ import React from 'react'
 
 function LoginPage() {
   return (
-    <div className='flex py-10 md:py-0 flex-col flex-1 justify-center items-center bg-[#64B5F5] '>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div className='flex py-10 md:py-0 flex-col flex-1 justify-center items-center bg-[#64B5F5] min-h-screen px-4'>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-5xl">
             <div className="flex flex-col items-center justify-center space-y-5 text-white">
 <div className="rounded-full bg-white p-5">
-    <Avatar seed='PAPAFAM' className='w-50 h-50 ' />
+    <Avatar seed='PAPAFAM' className='w-32 h-32 md:w-50 md:h-50' />
 
 </div>
 
@@ -22,7 +22,7 @@ function LoginPage() {
 </h3>
 </div>
             </div>
-            <SignIn routing='hash' fallbackRedirectUrl={"/"}/>
+            <SignIn fallbackRedirectUrl={"/"} signUpUrl="/sign-up" />
         </div>
     </div>
   )

@@ -60,13 +60,18 @@ export interface GetChatbotsByUserDataVariables {
     chatbotsList: Chatbot[];
 }
 
+export interface ChatbotsListByClerkUserIdResponse {
+    chatbotsListByClerkUserId: Chatbot[];
+}
+
 export interface GetChatSessionsMessagesResponse{
     chat_sessions:{
 id:number,
 created_at:string,
 messages:Message[],
 chatbots:{
-    name:string
+    name:string,
+    clerk_user_id:string,
 }
 guests:{
     name:string,

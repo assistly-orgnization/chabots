@@ -31,34 +31,34 @@ function ChatbotSessions({chatbots} :{chatbots:Chatbot[]}) {
 {sortedChatbots.map((chatbot) => {
     const hasSessions = chatbot.chat_sessions.length > 0
     return (
-        <AccordionItem key={chatbot.id} value={`item-${chatbot.id}`} className='px-10 py-5'>
+        <AccordionItem key={chatbot.id} value={`item-${chatbot.id}`} className='px-3 md:px-10 py-3 md:py-5'>
 {hasSessions ? (
     <>
            <AccordionTrigger>
             <div className="flex text-left item-center w-full">
-            <Avatar seed={chatbot.name} className='h-10 w-10 mr-4'/>
-            <div className="flex-1 flex justify-between space-x-4 items-center cursor-pointer">
-                <p>{chatbot.name}</p>
-                <p className="pr-4 font-bold text-right">
+            <Avatar seed={chatbot.name} className='h-10 w-10 mr-3 md:mr-4 shrink-0'/>
+            <div className="flex-1 flex flex-col sm:flex-row sm:justify-between sm:space-x-4 items-start sm:items-center cursor-pointer min-w-0">
+                <p className="truncate">{chatbot.name}</p>
+                <p className="pr-0 sm:pr-4 font-bold sm:text-right whitespace-nowrap">
                     {chatbot.chat_sessions.length} Sessions
                 </p>
             </div>
             </div>
             </AccordionTrigger>
-            <AccordionContent className="space-y-5 p-5 bg-gray-100 rounded-md">
+            <AccordionContent className="space-y-3 md:space-y-5 p-3 md:p-5 bg-gray-100 rounded-md">
                 {chatbot.chat_sessions.map((session)=>(
-                    <Link 
+                    <Link
                     href={`/review-sessions/${session.id}`}
                     key={session.id}
-                    className='relative p-10 bg-[#2991EE] rounded-md text-white block'
+                    className='relative p-5 md:p-10 bg-[#2991EE] rounded-md text-white block'
                     >
-                    <p className="text-lg font-bold">
+                    <p className="text-base md:text-lg font-bold pr-16">
                         {session.guests?.name || 'Anonymous'}
                     </p>
-                    <p className="text-sm font-light ">
+                    <p className="text-xs md:text-sm font-light break-all">
                         {session.guests?.email || 'No email provided'}
                     </p>
-                    <p className="top-5 right-5 text-sm absolute">
+                    <p className="top-3 right-3 md:top-5 md:right-5 text-xs md:text-sm absolute">
                         <ReactTimeago date={new Date(session.created_at)} />
                     </p>
                     </Link>

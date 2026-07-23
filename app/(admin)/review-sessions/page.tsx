@@ -25,9 +25,9 @@ const SortedChatbots = chatbotsByUser
   }));
 
   return (
-    <div className="flex-1 pb-20 p-x0">
-      <h1 className="text-xl lg:text-3xl font-semibold mt-10">Chat Sessions</h1>
-      <h2 className='mb-5'>Review all the chat sessions the chat bots have had with your customers</h2>
+    <div className="flex-1 justify-center pb-20 w-full max-w-5xl px-4">
+      <h1 className="text-2xl md:text-3xl font-semibold mt-4 md:mt-10">Chat Sessions</h1>
+      <h2 className='mb-5 text-sm md:text-base'>Review all the chat sessions the chat bots have had with your customers</h2>
     <ChatbotSessions chatbots={SortedChatbots}/>
     </div>
   )

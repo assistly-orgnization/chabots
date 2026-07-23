@@ -1,6 +1,6 @@
 'use client'
 
-import React, { FormEvent, use, useEffect, useState } from 'react'
+import React, { FormEvent, use, useEffect, useRef, useState } from 'react'
 import Link from 'next/link' 
 import { Input } from '@/components/ui/input'
 import { getBaseURL } from '@/qraphql/apolloClient';
@@ -127,17 +127,17 @@ if(!data?.chatbots) return redirect('/view-chatbots');
 
 
   return (
-    <div className='px-0 md:p-10'>
-<div className='md:sticky md:top-0 z-50 sm:max-w-sm ml-auto md-border space-y-2 rounded-b-lg md:rounded-lg mb-5 bg-[#2991EE] p-5 '>
+    <div className='w-full max-w-5xl px-3 md:px-0'>
+<div className='md:sticky md:top-24 z-40 md:max-w-sm md:ml-auto space-y-2 rounded-b-lg md:rounded-lg mb-5 bg-[#2991EE] p-4 md:p-5 '>
    <h2 className="text-white text-sm font-bold ">Link to Chat</h2>
-<p className="text-sm italic text-white">Share this link with your customers to start conversation with your chatbot</p>
-<div className='flex items-center space-x-2 space-y-3'>
+<p className="text-xs md:text-sm italic text-white">Share this link with your customers to start conversation with your chatbot</p>
+<div className='flex flex-col md:flex-row md:items-center md:space-x-2 space-y-2 md:space-y-0'>
   <Link href = {url} className='w-full cursor-pointer hover:opacity-50'>
   <Input value = {url} className='cursor-pointer text-black bg-white' readOnly />
   </Link>
   <Button
   size={'sm'}
-  className='px-3 cursor-pointer'
+  className='px-3 cursor-pointer self-start md:self-auto'
   onClick={()=>{  navigator.clipboard.writeText(url);
     toast.success("Copied to clipboard")
   }}>
@@ -147,53 +147,69 @@ if(!data?.chatbots) return redirect('/view-chatbots');
 </div>
 </div>
 
-  <section className='relative mt-5 bg-white p-5 md:p-10 rounded-lg'>
-    <Button variant={'destructive'} className='absolute right-2 top-2 h-8 w-2 ' 
+  <section className='relative mt-5 p-4 md:p-10 rounded-lg'>
+    <Button variant={'destructive'} className='absolute right-2 top-2 h-8 px-3 text-xs'
     onClick={()=> handleDelete(id)}
     >
-X
+    Delete
     </Button>
-    <div className='flex space-x-4'>
+    <div className='flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 pr-20'>
       <Avatar seed={chatbotName}/>
-      <form className='flex flex-1 space-x-2 items-center' 
+      <form className='flex flex-col sm:flex-row sm:flex-1 sm:space-x-2 space-y-2 sm:space-y-0 sm:items-center'
       onSubmit={handleUpdateChatbot}
       >
-        <Input 
+        <Input
         value={chatbotName}
         onChange={(e)=>setChatbotName(e.target.value)}
         placeholder={chatbotName}
   required
-  className='w-full border-gray-200 bg-transparent text-xl font-bold text-black'
+  className='w-full sm:w-1/2 border-gray-400 bg-transparent text-lg md:text-xl font-bold text-black'
   />
-        <Button type='submit' className='cursor-pointer' disabled={!chatbotName}>Update</Button>
+        <Button type='submit' className='cursor-pointer self-start sm:self-auto' disabled={!chatbotName}>Update</Button>
       </form>
     </div>
-    <h2 className="text-xl font-bold mt-10 mb-1">Heres what your AI knows...</h2>
-    <p>Your chatbot is equipped with the following information to assist you in your conversations with your customers & users</p>
+    <h2 className="text-lg md:text-xl font-bold mt-8 md:mt-10 mb-1">Heres what your AI knows...</h2>
+    <p className='text-sm md:text-base'>Your chatbot is equipped with the following information to assist you in your conversations with your customers & users</p>
 
-    <div className='bg-gray-200 p-5 rounded-md md:p-5 mt-5'>
+    <div className='bg-card/40 backdrop-blur-lg border border-border shadow-xl p-4 md:p-10 rounded-md mt-5 md:mt-8'>
       <form onSubmit={e=>{
         e.preventDefault();
         handleAddCharacteristic(newCharacteristic)
         setNewCharacteristic("")
       }}
-      className='flex mb-5  space-x-2 items-center '
+      className='flex flex-col md:flex-row mb-5 space-y-2 md:space-y-0 md:space-x-2 md:items-center'
       >
-        <Input type='text'
-         placeholder='Example: if your customer ask for price, provide pricing page: www.example.com/pricing' 
-         value={newCharacteristic}
-         onChange={(e)=>setNewCharacteristic(e.target.value)}
-         className='w-full border-gray-200 bg-transparent text-xl font-bold text-black mt-5 '
-         />
-        <Button type='submit' className='cursor-pointer mt-5' disabled={!newCharacteristic}>Add</Button>
+        <NewCharacteristicField
+          value={newCharacteristic}
+          onChange={setNewCharacteristic}
+        />
+        <Button type='submit' className='cursor-pointer self-start md:self-auto' disabled={!newCharacteristic}>Add</Button>
         </form>
-        <ul className='flex flex-wrap-reverse gap-5'>
-          {data?.chatbots?.chatbot_characteristics?.map((characteristic)=>(
-           
-            <Characteristics key={characteristic.id}  characteristics={characteristic}  />
-
-          ))}
-        </ul>
+        {data?.chatbots?.chatbot_characteristics?.length ? (
+          <div className='overflow-hidden rounded-md border border-gray-200 bg-white'>
+            <div className='flex items-center justify-between border-b border-gray-200 bg-gray-50/70 px-4 py-2'>
+              <h3 className='text-xs font-semibold uppercase tracking-wide text-gray-500'>
+                Saved characteristics
+              </h3>
+              <span className='text-xs text-gray-500'>
+                {data.chatbots.chatbot_characteristics.length} total
+              </span>
+            </div>
+            <ul className='divide-y divide-gray-200'>
+              {data.chatbots.chatbot_characteristics.map((characteristic, idx) => (
+                <Characteristics
+                  key={characteristic.id}
+                  characteristics={characteristic}
+                  index={idx + 1}
+                />
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className='rounded-md border border-dashed border-gray-300 bg-white/50 px-4 py-6 text-center text-sm text-gray-500'>
+            No characteristics yet. Add one above to teach your chatbot how to respond.
+          </p>
+        )}
     </div>
   </section>
     </div>
@@ -201,3 +217,31 @@ X
 }
 
 export default page
+
+function NewCharacteristicField({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (next: string) => void
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder='Example: if your customer ask for price, provide pricing page: www.example.com/pricing'
+      rows={1}
+      className='w-full flex-1 resize-none overflow-hidden border border-gray-300 bg-transparent px-3 py-2 text-base md:text-xl font-bold text-black/90 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
+    />
+  )
+}

@@ -17,8 +17,34 @@ export const GET_USER_CHATBOTS = gql`
       }
     }
   }
-  
+
 }
+`
+
+
+export const GET_CHATBOTS_BY_CLERK_USER_ID = gql`
+  query ChatbotsListByClerkUserId($clerk_user_id: String!) {
+    chatbotsListByClerkUserId(clerk_user_id: $clerk_user_id) {
+      id
+      name
+      created_at
+      clerk_user_id
+      chatbot_characteristics {
+        id
+        content
+        created_at
+      }
+      chat_sessions {
+        id
+        created_at
+        guests {
+          id
+          name
+          email
+        }
+      }
+    }
+  }
 `
 
 
@@ -98,6 +124,7 @@ query getAllChatbots {
     }
     chatbots {
       name
+      clerk_user_id
     }
     messages {
       id

@@ -32,6 +32,16 @@ mutation AddCharacteristic($chatbotId: Int!, $content: String!,$created_at: Date
   }
 }`;
 
+export const UPDATE_CHARACTERISTIC= gql`
+mutation UpdateCharacteristic($id: Int!, $content: String!) {
+  updateChatbot_characteristics(id: $id, content: $content) {
+    id
+    content
+    created_at
+  }
+}
+`;
+
 export const UPDATE_CHATBOT= gql`
 mutation UpdateChatbot($id: Int!, $name: String!) {
   updateChatbots(id: $id, name: $name) {

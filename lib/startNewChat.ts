@@ -1,54 +1,30 @@
-import client from "@/qraphql/apolloClient";
-import { Insert_Guests, InsertChatSession, InsertMessage } from "@/qraphql/mutations/mutations";
+async function startNewChat(
+  guestName: string,
+  guestEmail: string,
+  chatbotId: number,
+): Promise<number> {
+  const response = await fetch('/api/start-chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: guestName,
+      email: guestEmail,
+      chatbot_id: chatbotId,
+    }),
+  });
 
-async function startNewChat(guestName:string,guestEmail:string,chatbotId:number){
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message =
+      payload?.error ?? `Failed to start chat (${response.status})`;
+    throw new Error(message);
+  }
 
-    try {
-
-        //create new guest intery
-        const guestResult= await client.mutate({
-           mutation:Insert_Guests,
-           variables:{
-               created_at:new Date().toISOString(),
-               email:guestEmail,
-               name:guestName,
-           }
-  
-        })
-
-      
-        const guestId=guestResult.data.insertGuests.id
-
-        // 2. initilaize a new chat session
-
-        const chatSessionResult= await client.mutate({
-            mutation:InsertChatSession,
-            variables:{
-                chatbot_id:chatbotId,
-                guest_id:guestId,
-                created_at:new Date().toISOString()
-            }
-        })
-
-        const chatSessionId=chatSessionResult.data.insertChat_sessions.id;
-
-
-
-        //insert Inital Message
-
-        await client.mutate({
-            mutation:InsertMessage,
-            variables:{
-                chat_session_id:chatSessionId,
-                content:`Welcome ${guestName} !\n How can I assist you today?`,
-                created_at:new Date().toISOString(),
-                sender:'ai',
-            }
-        })
-        console.log("New chat session started with id:");
-        return chatSessionId;
-    } catch (error) {
-        console.error("Error starting new chat session:", error);
-    }
+  const data = await response.json();
+  if (typeof data?.chat_session_id !== 'number') {
+    throw new Error('Server returned an invalid response');
+  }
+  return data.chat_session_id;
 }
+
 export default startNewChat;
