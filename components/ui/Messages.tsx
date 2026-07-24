@@ -59,9 +59,9 @@ function TypewriterMarkdown({ text, isFresh, components, onType }: { text: strin
 /*  Component                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function Messages({ messages, chatbotName, logoUrl }: { messages: Message[], chatbotName: string, logoUrl?: string }) {
+function Messages({ messages, chatbotName, logoUrl, isReviewPage: isReviewPageProp }: { messages: Message[], chatbotName: string, logoUrl?: string, isReviewPage?: boolean }) {
   const path = usePathname();
-  const isReviewPage = path.includes('review-sessions');
+  const isReviewPage = isReviewPageProp ?? path.includes('review-sessions');
   const ref = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<number | string | null>(null);
 

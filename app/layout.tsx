@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ApolloProviderWrapper from "@/components/ui/ApolloProvider";
 import { Toaster } from "@/components/ui/sonner"
+import { ClerkProvider } from "@clerk/nextjs";
 import { Fraunces, DM_Sans, JetBrains_Mono } from "next/font/google"
 
 const fraunces = Fraunces({
@@ -37,15 +38,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ApolloProviderWrapper>
-      <html lang="en" className={`${fraunces.variable} ${dmSans.variable} ${jetbrains.variable}`}>
-        <body
-        className="min-h-screen flex"
-        >
-          {children}
-          <Toaster  position="bottom-center" />
-        </body>
-      </html>
-    </ApolloProviderWrapper>
+    <ClerkProvider>
+      <ApolloProviderWrapper>
+        <html lang="en" className={`${fraunces.variable} ${dmSans.variable} ${jetbrains.variable}`}>
+          <body
+          className="min-h-screen flex"
+          >
+            {children}
+            <Toaster  position="bottom-center" />
+          </body>
+        </html>
+      </ApolloProviderWrapper>
+    </ClerkProvider>
   );
 }
