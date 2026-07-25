@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ApolloProvider } from '@apollo/client';
 import { createApolloClient } from './ApolloProvider';
-import ChatbotClient from '@/app/(guest)/chatbot/[id]/ChatbotClient';
+import ChatbotClient from './ChatbotClient';
 
 export type AssistlyChatProps = {
   chatbotId: number;
@@ -58,7 +58,7 @@ export default function AssistlyChat({
           ...(primaryColor ? ({ '--assistly-primary': primaryColor } as React.CSSProperties) : null),
         }}
       >
-        <ChatbotClient id={String(chatbotId)} chatbotName="Assistant" />
+        <ChatbotClient id={String(chatbotId)} chatbotName="Assistant" origin={origin} />
       </div>
     </ApolloProvider>
   );

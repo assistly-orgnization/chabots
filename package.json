@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "pnpm build:embed && next build",
-    "build:embed": "tsup",
+    "build:embed": "pnpm --filter @assistly/embed build",
     "start": "next start",
     "lint": "next lint"
   },
