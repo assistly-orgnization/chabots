@@ -56,6 +56,7 @@ import { useQuery } from "@apollo/client";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Send, ShieldCheck, ArrowUpRight } from "lucide-react";
 
 // src/lib/startNewChat.ts
 async function startNewChat(origin, guestName, guestEmail, chatbotId) {
@@ -100,164 +101,12 @@ var GET_MESSEGES_BY_CHAT_SESSION_ID = gql`
   }
 `;
 
-// src/ui/Avatar.tsx
-import { rings } from "@dicebear/collection";
-import { createAvatar } from "@dicebear/core";
-import { jsx } from "react/jsx-runtime";
-function utf8ToBase64(input) {
-  const bytes = new TextEncoder().encode(input);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-function Avatar({ seed, className }) {
-  const avatar = createAvatar(rings, { seed });
-  const svg = avatar.toString();
-  const dataUrl = `data:image/svg+xml;base64,${utf8ToBase64(svg)}`;
-  return /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx("img", { src: dataUrl, alt: "Avatar", width: 80, height: 80, className }) });
-}
-var Avatar_default = Avatar;
-
 // src/ui/Messages.tsx
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { UserCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-// src/ui/ChatMotion.tsx
-import { jsx as jsx2, jsxs } from "react/jsx-runtime";
-function FourDotWave({ className = "" }) {
-  const dots = [
-    { color: "#8a2a2a", delay: "0s" },
-    // oxblood
-    { color: "#c89a5b", delay: "0.12s" },
-    // brass
-    { color: "#5a6b3b", delay: "0.24s" },
-    // moss
-    { color: "#2c5b5e", delay: "0.36s" }
-    // teal
-  ];
-  return /* @__PURE__ */ jsxs("span", { className: `inline-flex items-center gap-1.5 ${className}`, "aria-label": "Loading", children: [
-    dots.map((d, i) => /* @__PURE__ */ jsx2(
-      "span",
-      {
-        className: "dot-wave",
-        style: { backgroundColor: d.color, animationDelay: d.delay }
-      },
-      i
-    )),
-    /* @__PURE__ */ jsx2("style", { children: `
-        .dot-wave {
-          display: inline-block;
-          width: 7px;
-          height: 7px;
-          border-radius: 9999px;
-          will-change: transform;
-          animation: dotBounce 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-        }
-        @keyframes dotBounce {
-          0%, 60%, 100% { transform: translate3d(0, 0, 0); }
-          30%           { transform: translate3d(0, -6px, 0); }
-        }
-      ` })
-  ] });
-}
-function AiBubble({
-  children,
-  className = "",
-  springIn = true,
-  style,
-  typing = false
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: `ai-bubble ${springIn ? "ai-bubble-in" : ""} ${typing ? "ai-typing" : ""} ${className}`,
-      style,
-      children: [
-        children,
-        /* @__PURE__ */ jsx2("style", { children: `
-        .ai-bubble {
-          position: relative;
-          transform-origin: bottom left;
-          color: #1e1e1e;
-          background: linear-gradient(
-            135deg,
-            #eef2ff 0%,
-            #f5f3ff 35%,
-            #ecfeff 70%,
-            #eef2ff 100%
-          );
-          background-size: 250% 250%;
-          will-change: transform, background-position, box-shadow;
-          transition: box-shadow 220ms ease, background 220ms ease;
-        }
-        .ai-bubble-in {
-          animation: aiSpring 620ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        /* Typing state: vibrant purple gradient with glow */
-        .ai-typing {
-          background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 35%, #8b5cf6 70%, #7c3aed 100%);
-          background-size: 200% 200%;
-          animation: aiTypingShift 4.5s ease-in-out infinite;
-          box-shadow: 0 12px 36px rgba(124,58,237,0.20), 0 1px 0 rgba(255,255,255,0.05) inset;
-          color: #fff;
-          border-color: rgba(255,255,255,0.08);
-        }
-        @keyframes aiSpring {
-          0%   { transform: scale(0.4) translate3d(0, 12px, 0); opacity: 0; }
-          60%  { transform: scale(1.04) translate3d(0, -2px, 0); opacity: 1; }
-          100% { transform: scale(1) translate3d(0, 0, 0); opacity: 1; }
-        }
-        @keyframes aiTypingShift {
-          0%   { background-position:   0%  50%; filter: drop-shadow(0 0 0 rgba(124,58,237,0)); }
-          50%  { background-position: 100%  50%; filter: drop-shadow(0 18px 48px rgba(124,58,237,0.18)); }
-          100% { background-position:   0%  50%; filter: drop-shadow(0 0 0 rgba(124,58,237,0)); }
-        }
-      ` })
-      ]
-    }
-  );
-}
-function UserBubble({
-  children,
-  className = "",
-  springIn = true,
-  style
-}) {
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      className: `user-bubble ${springIn ? "user-bubble-in" : ""} ${className}`,
-      style,
-      children: [
-        children,
-        /* @__PURE__ */ jsx2("style", { children: `
-        .user-bubble {
-          position: relative;
-          transform-origin: bottom right;
-          background: #111113;
-          color: #ffffff;
-          will-change: transform;
-        }
-        .user-bubble-in {
-          animation: userSpring 520ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        @keyframes userSpring {
-          0%   { transform: scale(0.4) translate3d(0, 12px, 0); opacity: 0; }
-          60%  { transform: scale(1.04) translate3d(0, -2px, 0); opacity: 1; }
-          100% { transform: scale(1) translate3d(0, 0, 0); opacity: 1; }
-        }
-      ` })
-      ]
-    }
-  );
-}
-
-// src/ui/Messages.tsx
-import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
+import { jsx, jsxs } from "react/jsx-runtime";
 function formatTime(iso) {
   try {
     const d = new Date(iso);
@@ -266,7 +115,12 @@ function formatTime(iso) {
     return "";
   }
 }
-function TypewriterMarkdown({ text, isFresh, components, onType }) {
+function TypewriterMarkdown({
+  text,
+  isFresh,
+  components,
+  onType
+}) {
   const [displayedText, setDisplayedText] = useState("");
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -279,22 +133,20 @@ function TypewriterMarkdown({ text, isFresh, components, onType }) {
         setDisplayedText((prev) => prev + text[index]);
         setIndex((prev) => prev + 1);
         if (onType) onType();
-      }, 15);
+      }, 14);
       return () => clearTimeout(timeout);
     } else if (!isFresh) {
       setDisplayedText(text || "");
     }
   }, [index, text, isFresh]);
-  return /* @__PURE__ */ jsx3(
-    ReactMarkdown,
-    {
-      remarkPlugins: [remarkGfm],
-      components,
-      children: isFresh ? displayedText : text
-    }
-  );
+  const showCaret = isFresh && index < text.length;
+  return /* @__PURE__ */ jsx("span", { className: showCaret ? "assistly-caret" : void 0, children: /* @__PURE__ */ jsx(ReactMarkdown, { remarkPlugins: [remarkGfm], components, children: isFresh ? displayedText : text }) });
 }
-function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }) {
+function Messages({
+  messages,
+  chatbotName,
+  isReviewPage = false
+}) {
   const ref = useRef(null);
   const [hoveredId, setHoveredId] = useState(null);
   const scrollToBottom = (smooth = true) => {
@@ -305,111 +157,162 @@ function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   const markdownComponents = {
     ul: (_a) => {
       var _b = _a, { node } = _b, props = __objRest(_b, ["node"]);
-      return /* @__PURE__ */ jsx3("ul", __spreadValues({ className: "list-disc list-inside ml-5 mb-3" }, props));
+      return /* @__PURE__ */ jsx("ul", __spreadValues({}, props));
     },
     ol: (_c) => {
       var _d = _c, { node } = _d, props = __objRest(_d, ["node"]);
-      return /* @__PURE__ */ jsx3("ol", __spreadValues({ className: "list-decimal list-inside ml-5 mb-3" }, props));
+      return /* @__PURE__ */ jsx("ol", __spreadValues({}, props));
     },
-    h1: (_e) => {
+    a: (_e) => {
       var _f = _e, { node } = _f, props = __objRest(_f, ["node"]);
-      return /* @__PURE__ */ jsx3("h1", __spreadValues({ className: "text-2xl font-bold mb-3 font-display" }, props));
-    },
-    h2: (_g) => {
-      var _h = _g, { node } = _h, props = __objRest(_h, ["node"]);
-      return /* @__PURE__ */ jsx3("h2", __spreadValues({ className: "text-xl font-bold mb-3 font-display" }, props));
-    },
-    h3: (_i) => {
-      var _j = _i, { node } = _j, props = __objRest(_j, ["node"]);
-      return /* @__PURE__ */ jsx3("h3", __spreadValues({ className: "text-lg font-bold mb-3 font-display" }, props));
-    },
-    table: (_k) => {
-      var _l = _k, { node } = _l, props = __objRest(_l, ["node"]);
-      return /* @__PURE__ */ jsx3("table", __spreadValues({ className: "table-auto mb-3 w-full border-separate border-2 rounded-sm border-spacing-4", style: { borderColor: "rgba(26,20,15,0.18)" } }, props));
-    },
-    th: (_m) => {
-      var _n = _m, { node } = _n, props = __objRest(_n, ["node"]);
-      return /* @__PURE__ */ jsx3("th", __spreadValues({ className: "text-left underline" }, props));
-    },
-    p: (_o) => {
-      var _p = _o, { node } = _p, props = __objRest(_p, ["node"]);
-      return /* @__PURE__ */ jsx3("p", __spreadValues({ className: "whitespace-pre-wrap mb-3 last:mb-0 leading-relaxed" }, props));
-    },
-    a: (_q) => {
-      var _r = _q, { node } = _r, props = __objRest(_r, ["node"]);
-      return /* @__PURE__ */ jsx3("a", __spreadValues({ className: "hover:underline font-semibold", style: { color: "#c45d4f" }, rel: "noopener noreferrer", target: "_blank" }, props));
-    },
-    code: (_s) => {
-      var _t = _s, { node } = _t, props = __objRest(_t, ["node"]);
-      return /* @__PURE__ */ jsx3(
-        "code",
-        __spreadValues({
-          className: "px-1.5 py-0.5 rounded font-mono text-[13px]",
-          style: { background: "rgba(26,20,15,0.10)" }
-        }, props)
-      );
+      return /* @__PURE__ */ jsx("a", __spreadValues({ rel: "noopener noreferrer", target: "_blank" }, props));
     }
   };
-  return /* @__PURE__ */ jsxs2("div", { className: "flex flex-1 flex-col space-y-7 py-8 px-5 md:px-10 bg-transparent rounded-lg scroll-smooth ", children: [
+  return /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: 22 }, children: [
     messages.map((message, index) => {
       const isSender = message.sender !== "user";
       const isThinking = message.content === "" || message.content === "Thinking...";
       const isFresh = index === messages.length - 1;
       const showMeta = hoveredId === message.id || isReviewPage;
-      return /* @__PURE__ */ jsxs2(
+      return /* @__PURE__ */ jsxs(
         "div",
         {
           onMouseEnter: () => setHoveredId(message.id),
           onMouseLeave: () => setHoveredId(null),
-          className: `chat ${isSender ? "chat-start" : "chat-end"} relative group overflow-hidden`,
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: isSender ? "flex-start" : "flex-end",
+            maxWidth: "100%"
+          },
           children: [
-            isReviewPage && /* @__PURE__ */ jsxs2("p", { className: "absolute -bottom-5 text-xs text-gray-300", children: [
-              "sent ",
-              new Date(message.created_at).toLocaleString()
-            ] }),
-            isFresh && /* @__PURE__ */ jsx3(
-              "span",
-              {
-                "aria-hidden": true,
-                className: "ring-out pointer-events-none absolute -inset-2 rounded-[26px]"
-              }
-            ),
-            /* @__PURE__ */ jsx3("div", { className: `chat-image avatar w-10 ${!isSender && "mr-4"}`, children: logoUrl ? /* @__PURE__ */ jsx3(
-              "img",
-              {
-                src: logoUrl,
-                alt: chatbotName || "Chatbot logo",
-                width: 48,
-                height: 48,
-                className: "h-12 w-12 rounded-full border object-cover",
-                style: { borderColor: "var(--hairline)" }
-              }
-            ) : isSender ? /* @__PURE__ */ jsx3(
+            /* @__PURE__ */ jsxs(
               "div",
               {
-                className: "border h-12 w-12 rounded-full bg-white overflow-hidden",
-                style: { borderColor: "var(--hairline)" },
-                children: /* @__PURE__ */ jsx3(Avatar_default, { seed: chatbotName, className: "h-12 w-12" })
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 8,
+                  padding: isSender ? "0 4px" : "0 4px",
+                  flexDirection: isSender ? "row" : "row-reverse"
+                },
+                children: [
+                  /* @__PURE__ */ jsx(
+                    "div",
+                    {
+                      style: {
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        background: isSender ? "var(--assistly-paper-2)" : "var(--assistly-ink)",
+                        color: isSender ? "var(--assistly-ink)" : "var(--assistly-paper)",
+                        border: "1px solid var(--assistly-hairline-strong)",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0
+                      },
+                      "aria-hidden": true,
+                      children: isSender ? /* @__PURE__ */ jsx(
+                        "span",
+                        {
+                          style: {
+                            fontFamily: "Fraunces, Georgia, serif",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            lineHeight: 1
+                          },
+                          children: chatbotName.charAt(0).toUpperCase()
+                        }
+                      ) : /* @__PURE__ */ jsx(UserCircle, { size: 14, strokeWidth: 1.6 })
+                    }
+                  ),
+                  /* @__PURE__ */ jsxs(
+                    "div",
+                    {
+                      className: "assistly-font-mono",
+                      style: {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 10,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "var(--assistly-ink-mute)"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx("span", { style: { color: "var(--assistly-ink-soft)", fontWeight: 500 }, children: isSender ? chatbotName || "assistant" : "you" }),
+                        /* @__PURE__ */ jsx(
+                          "span",
+                          {
+                            style: {
+                              width: 3,
+                              height: 3,
+                              borderRadius: "50%",
+                              background: "var(--assistly-ink-mute)",
+                              opacity: showMeta ? 1 : 0,
+                              transition: "opacity 200ms"
+                            }
+                          }
+                        ),
+                        /* @__PURE__ */ jsx("span", { style: { opacity: showMeta ? 1 : 0, transition: "opacity 200ms" }, children: formatTime(message.created_at) })
+                      ]
+                    }
+                  )
+                ]
               }
-            ) : /* @__PURE__ */ jsx3("div", { className: "h-12 w-12 rounded-full grid place-items-center", style: { background: "rgba(244,234,215,0.06)" }, children: /* @__PURE__ */ jsx3(UserCircle, { className: "text-[var(--brass-2)]" }) }) }),
-            isSender ? /* @__PURE__ */ jsx3(
-              AiBubble,
+            ),
+            /* @__PURE__ */ jsx(
+              "div",
               {
-                springIn: isFresh,
-                typing: isThinking,
-                className: "chat-bubble relative rounded-2xl px-4 py-3 max-w-[80%] font-body text-[15px] leading-relaxed",
-                style: isThinking ? {} : { border: "1px solid rgba(224,176,112,0.18)" },
-                children: isThinking ? /* @__PURE__ */ jsxs2("div", { className: "flex items-center gap-3 py-1", style: { color: "#1e1e1e" }, children: [
-                  /* @__PURE__ */ jsx3(FourDotWave, {}),
-                  /* @__PURE__ */ jsx3("span", { className: "font-mono text-[10px] uppercase tracking-[0.25em] opacity-70", children: "Thinking..." })
-                ] }) : /* @__PURE__ */ jsx3(
+                className: `${isSender ? "assistly-bubble-in" : ""}`,
+                style: {
+                  position: "relative",
+                  maxWidth: "min(82%, 640px)",
+                  padding: "12px 16px",
+                  borderRadius: isSender ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
+                  background: isSender ? "#fffefb" : "var(--assistly-ink)",
+                  color: isSender ? "var(--assistly-ink)" : "var(--assistly-paper)",
+                  border: isSender ? "1px solid var(--assistly-hairline-strong)" : "1px solid var(--assistly-ink)",
+                  boxShadow: isSender ? "0 1px 0 rgba(26,20,15,0.02), 0 8px 24px rgba(26,20,15,0.05)" : "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(26,20,15,0.18)",
+                  fontSize: 15,
+                  lineHeight: 1.6
+                },
+                children: isThinking ? /* @__PURE__ */ jsxs(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "2px 0",
+                      minHeight: 22
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx("span", { className: "assistly-dot" }),
+                      /* @__PURE__ */ jsx("span", { className: "assistly-dot" }),
+                      /* @__PURE__ */ jsx("span", { className: "assistly-dot" }),
+                      /* @__PURE__ */ jsx("span", { className: "assistly-dot" }),
+                      /* @__PURE__ */ jsx(
+                        "span",
+                        {
+                          className: "assistly-font-mono",
+                          style: {
+                            marginLeft: 4,
+                            fontSize: 10,
+                            letterSpacing: "0.22em",
+                            textTransform: "uppercase",
+                            color: "var(--assistly-ink-mute)"
+                          },
+                          children: "Thinking\u2026"
+                        }
+                      )
+                    ]
+                  }
+                ) : isSender ? /* @__PURE__ */ jsx("div", { className: "assistly-prose", children: /* @__PURE__ */ jsx(
                   TypewriterMarkdown,
                   {
                     text: message.content,
@@ -417,38 +320,7 @@ function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }) {
                     components: markdownComponents,
                     onType: () => scrollToBottom(false)
                   }
-                )
-              }
-            ) : /* @__PURE__ */ jsx3(
-              UserBubble,
-              {
-                springIn: isFresh,
-                className: "chat-bubble relative rounded-2xl px-4 py-3 max-w-[80%] font-body text-[15px] leading-relaxed",
-                style: {
-                  background: "#e9e3e3ff",
-                  color: "#1e1e1e",
-                  border: "1px solid rgba(231, 228, 224, 0.22)"
-                },
-                children: /* @__PURE__ */ jsx3(
-                  ReactMarkdown,
-                  {
-                    remarkPlugins: [remarkGfm],
-                    components: markdownComponents,
-                    children: message.content
-                  }
-                )
-              }
-            ),
-            /* @__PURE__ */ jsxs2(
-              "div",
-              {
-                className: `mt-1.5 px-1  flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-opacity duration-200 ${showMeta ? "opacity-100" : "opacity-0"}`,
-                style: { color: "var(--muted-2)" },
-                children: [
-                  /* @__PURE__ */ jsx3("span", { children: isSender ? chatbotName || "assistant" : "you" }),
-                  /* @__PURE__ */ jsx3("span", { className: "w-1 h-1 rounded-full", style: { background: "var(--muted-2)" } }),
-                  /* @__PURE__ */ jsx3("span", { children: formatTime(message.created_at) })
-                ]
+                ) }) : /* @__PURE__ */ jsx("div", { className: "assistly-prose", children: /* @__PURE__ */ jsx(ReactMarkdown, { remarkPlugins: [remarkGfm], components: markdownComponents, children: message.content }) })
               }
             )
           ]
@@ -456,7 +328,7 @@ function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }) {
         message.id || index
       );
     }),
-    /* @__PURE__ */ jsx3("div", { ref })
+    /* @__PURE__ */ jsx("div", { ref })
   ] });
 }
 var Messages_default = Messages;
@@ -480,17 +352,17 @@ function cn(...inputs) {
 
 // src/ui/label.tsx
 import * as LabelPrimitive from "@radix-ui/react-label";
-import { jsx as jsx4 } from "react/jsx-runtime";
+import { jsx as jsx2 } from "react/jsx-runtime";
 
 // src/ui/form.tsx
-import { jsx as jsx5 } from "react/jsx-runtime";
+import { jsx as jsx3 } from "react/jsx-runtime";
 var Form = FormProvider;
 var FormFieldContext = React2.createContext(
   {}
 );
 var FormField = (_a) => {
   var props = __objRest(_a, []);
-  return /* @__PURE__ */ jsx5(FormFieldContext.Provider, { value: { name: props.name }, children: /* @__PURE__ */ jsx5(Controller, __spreadValues({}, props)) });
+  return /* @__PURE__ */ jsx3(FormFieldContext.Provider, { value: { name: props.name }, children: /* @__PURE__ */ jsx3(Controller, __spreadValues({}, props)) });
 };
 var useFormField = () => {
   const fieldContext = React2.useContext(FormFieldContext);
@@ -516,7 +388,7 @@ var FormItemContext = React2.createContext(
 function FormItem(_a) {
   var _b = _a, { className } = _b, props = __objRest(_b, ["className"]);
   const id = React2.useId();
-  return /* @__PURE__ */ jsx5(FormItemContext.Provider, { value: { id }, children: /* @__PURE__ */ jsx5(
+  return /* @__PURE__ */ jsx3(FormItemContext.Provider, { value: { id }, children: /* @__PURE__ */ jsx3(
     "div",
     __spreadValues({
       "data-slot": "form-item",
@@ -527,7 +399,7 @@ function FormItem(_a) {
 function FormControl(_a) {
   var props = __objRest(_a, []);
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
-  return /* @__PURE__ */ jsx5(
+  return /* @__PURE__ */ jsx3(
     Slot,
     __spreadValues({
       "data-slot": "form-control",
@@ -539,10 +411,10 @@ function FormControl(_a) {
 }
 
 // src/ui/input.tsx
-import { jsx as jsx6 } from "react/jsx-runtime";
+import { jsx as jsx4 } from "react/jsx-runtime";
 function Input(_a) {
   var _b = _a, { className, type } = _b, props = __objRest(_b, ["className", "type"]);
-  return /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx4(
     "input",
     __spreadValues({
       type,
@@ -557,59 +429,8 @@ function Input(_a) {
   );
 }
 
-// src/ui/button.tsx
-import { Slot as Slot2 } from "@radix-ui/react-slot";
-import { cva } from "class-variance-authority";
-import { jsx as jsx7 } from "react/jsx-runtime";
-var buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
-        outline: "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline"
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-3",
-        icon: "size-9"
-      }
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default"
-    }
-  }
-);
-function Button(_a) {
-  var _b = _a, {
-    className,
-    variant,
-    size,
-    asChild = false
-  } = _b, props = __objRest(_b, [
-    "className",
-    "variant",
-    "size",
-    "asChild"
-  ]);
-  const Comp = asChild ? Slot2 : "button";
-  return /* @__PURE__ */ jsx7(
-    Comp,
-    __spreadValues({
-      "data-slot": "button",
-      className: cn(buttonVariants({ variant, size, className }))
-    }, props)
-  );
-}
-
 // src/ChatbotClient.tsx
-import { jsx as jsx8, jsxs as jsxs3 } from "react/jsx-runtime";
+import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
 var formSchema = z.object({
   message: z.string().min(3, "Your Message is too short!")
 });
@@ -622,7 +443,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
   const [message, setMessage] = useState2([
     {
       id: -1,
-      content: `Hi there! I'm ${chatbotName}. I'd love to help you out, but first, could you tell me your name?`,
+      content: `Hi there \u2014 I'm ${chatbotName}. I'd love to help, but first, what's your name?`,
       sender: "ai",
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
       chat_session_id: 0
@@ -630,16 +451,12 @@ function ChatbotClient({ id, chatbotName, origin }) {
   ]);
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      message: ""
-    }
+    defaultValues: { message: "" },
+    mode: "onChange"
   });
   const { data } = useQuery(
     GET_MESSEGES_BY_CHAT_SESSION_ID,
-    {
-      variables: { chat_session_id: chatId },
-      skip: !chatId
-    }
+    { variables: { chat_session_id: chatId }, skip: !chatId }
   );
   useEffect2(() => {
     if (data && onboardingStep === 3) {
@@ -666,7 +483,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
       };
       const aiMsg = {
         id: Date.now() + 1,
-        content: `It's a pleasure to meet you, ${formMessage}! Just one more thing\u2014what's your email address so we can stay connected?`,
+        content: `Lovely to meet you, ${formMessage}. One more thing \u2014 what's your email so we can stay in touch?`,
         chat_session_id: 0,
         sender: "ai",
         created_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -678,15 +495,13 @@ function ChatbotClient({ id, chatbotName, origin }) {
     }
     if (onboardingStep === 2) {
       if (!formMessage.trim()) return;
-      const isValidEmail = (email2) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2);
-      };
+      const isValidEmail = (email2) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2);
       if (!isValidEmail(formMessage.trim())) {
         setMessage((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
-            content: "Please enter a valid email address so we can continue.",
+            content: "That email doesn't look quite right \u2014 could you double-check it?",
             chat_session_id: 0,
             sender: "ai",
             created_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -704,16 +519,15 @@ function ChatbotClient({ id, chatbotName, origin }) {
       setMessage((prev) => [...prev, userMsg]);
       setLoading(true);
       try {
-        const finalEmail = formMessage;
-        setEmail(finalEmail);
-        const newChatId = await startNewChat_default(origin, name, finalEmail, Number(id));
+        const newChatId = await startNewChat_default(origin, name, formMessage, Number(id));
+        setEmail(formMessage);
         setChatId(newChatId);
         setOnboardingStep(3);
       } catch (error) {
         console.error("Error starting chat:", error);
         setMessage((prev) => [...prev, {
           id: Date.now() + 1,
-          content: "Sorry, I had trouble setting up your session. Could you please try entering your email again?",
+          content: "Sorry \u2014 I had trouble setting up your session. Mind entering your email again?",
           chat_session_id: 0,
           sender: "ai",
           created_at: (/* @__PURE__ */ new Date()).toISOString()
@@ -762,68 +576,582 @@ function ChatbotClient({ id, chatbotName, origin }) {
       console.error("Error Sending Message:", error);
     }
   }
-  return /* @__PURE__ */ jsx8("div", { className: "fixed inset-0 flex flex-col bg-gray-50 text-slate-900 md:p-6 md:pb-0", children: /* @__PURE__ */ jsxs3("div", { className: "flex flex-col w-full max-w-3xl mx-auto flex-1 overflow-hidden md:rounded-t-2xl border border-gray-200 bg-white relative", children: [
-    /* @__PURE__ */ jsxs3("div", { className: "border-b border-gray-100 bg-white py-3 px-4 md:py-6 md:px-8 flex items-center justify-between shrink-0", children: [
-      /* @__PURE__ */ jsxs3("div", { className: "flex items-center space-x-3 md:space-x-4 min-w-0", children: [
-        /* @__PURE__ */ jsxs3("div", { className: "relative shrink-0", children: [
-          /* @__PURE__ */ jsx8(
-            Avatar_default,
-            {
-              seed: chatbotName != null ? chatbotName : "default-seed",
-              className: "w-9 h-9 md:w-10 md:h-10 bg-gray-100 rounded-full border border-gray-200"
-            }
-          ),
-          /* @__PURE__ */ jsx8("div", { className: "absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" })
-        ] }),
-        /* @__PURE__ */ jsxs3("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ jsx8("h1", { className: "truncate text-sm md:text-base font-semibold text-slate-900", children: chatbotName || "Assistant" }),
-          /* @__PURE__ */ jsxs3("p", { className: "text-xs text-slate-400 flex items-center gap-1.5", children: [
-            /* @__PURE__ */ jsx8("span", { className: "w-2 h-2 bg-emerald-500 rounded-full" }),
-            "Online"
-          ] })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsx8("div", { className: "hidden sm:block text-[11px] font-medium text-slate-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100", children: "Secure Session" })
-    ] }),
-    /* @__PURE__ */ jsx8("div", { className: "flex-1 relative bg-white pb-32 md:pb-36 overflow-y-auto", children: /* @__PURE__ */ jsx8(Messages_default, { messages: message, chatbotName: chatbotName || "" }) }),
-    /* @__PURE__ */ jsx8("div", { className: "absolute bottom-0 w-full bg-white p-3 md:p-6 border-t border-gray-100", children: /* @__PURE__ */ jsx8(Form, __spreadProps(__spreadValues({}, form), { children: /* @__PURE__ */ jsxs3(
-      "form",
-      {
-        className: "relative flex items-center gap-2 md:gap-3 max-w-4xl mx-auto",
-        onSubmit: form.handleSubmit(onsubmit),
-        children: [
-          /* @__PURE__ */ jsx8("div", { className: "relative flex-1", children: /* @__PURE__ */ jsx8(
-            FormField,
-            {
-              control: form.control,
-              name: "message",
-              render: ({ field }) => /* @__PURE__ */ jsx8(FormItem, { className: "flex-1", children: /* @__PURE__ */ jsx8(FormControl, { children: /* @__PURE__ */ jsx8(
-                Input,
-                __spreadProps(__spreadValues({}, field), {
-                  placeholder: onboardingStep === 1 ? "Your name..." : onboardingStep === 2 ? "Your email..." : "Type a message...",
-                  className: "p-3 md:p-5 rounded-xl bg-gray-50 border-gray-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all"
-                })
-              ) }) })
-            }
-          ) }),
-          /* @__PURE__ */ jsx8(
-            Button,
-            {
-              type: "submit",
-              disabled: form.formState.isSubmitting || !form.formState.isValid || loading,
-              className: "h-12 w-12 md:h-16 md:w-16 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shrink-0",
-              children: loading ? /* @__PURE__ */ jsx8("div", { className: "h-6 w-6 md:h-8 md:w-8 border-2 border-white border-t-transparent rounded-full animate-spin" }) : /* @__PURE__ */ jsx8("p", { className: "cursor-pointer text-sm md:text-base", children: "Send" })
-            }
-          )
-        ]
-      }
-    ) })) })
-  ] }) });
+  return /* @__PURE__ */ jsxs2(
+    "div",
+    {
+      style: {
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+        minHeight: 520,
+        background: "var(--assistly-paper)",
+        color: "var(--assistly-ink)",
+        overflow: "hidden"
+      },
+      children: [
+        /* @__PURE__ */ jsx5("div", { className: "assistly-grain" }),
+        /* @__PURE__ */ jsxs2(
+          "header",
+          {
+            style: {
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "18px 24px",
+              background: "var(--assistly-paper)",
+              borderBottom: "1px solid var(--assistly-hairline)"
+            },
+            children: [
+              /* @__PURE__ */ jsxs2("div", { style: { display: "flex", alignItems: "center", gap: 14, minWidth: 0 }, children: [
+                /* @__PURE__ */ jsxs2(
+                  "div",
+                  {
+                    style: {
+                      position: "relative",
+                      width: 44,
+                      height: 44,
+                      borderRadius: "50%",
+                      background: "var(--assistly-paper-2)",
+                      border: "1px solid var(--assistly-hairline-strong)",
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0
+                    },
+                    "aria-hidden": true,
+                    children: [
+                      /* @__PURE__ */ jsx5(
+                        "span",
+                        {
+                          style: {
+                            fontFamily: "Fraunces, Georgia, serif",
+                            fontSize: 19,
+                            fontWeight: 500,
+                            color: "var(--assistly-ink)",
+                            letterSpacing: "-0.02em"
+                          },
+                          children: chatbotName.charAt(0).toUpperCase()
+                        }
+                      ),
+                      /* @__PURE__ */ jsx5(
+                        "span",
+                        {
+                          style: {
+                            position: "absolute",
+                            right: -1,
+                            bottom: -1,
+                            width: 12,
+                            height: 12,
+                            borderRadius: "50%",
+                            background: "#5a8c5a",
+                            border: "2px solid var(--assistly-paper)"
+                          }
+                        }
+                      )
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxs2("div", { style: { display: "flex", flexDirection: "column", minWidth: 0 }, children: [
+                  /* @__PURE__ */ jsx5(
+                    "span",
+                    {
+                      className: "assistly-font-display",
+                      style: {
+                        fontSize: 17,
+                        lineHeight: 1.1,
+                        color: "var(--assistly-ink)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      },
+                      children: chatbotName
+                    }
+                  ),
+                  /* @__PURE__ */ jsxs2(
+                    "span",
+                    {
+                      className: "assistly-font-mono",
+                      style: {
+                        fontSize: 10,
+                        marginTop: 4,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "var(--assistly-ink-mute)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx5(
+                          "span",
+                          {
+                            style: {
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: "#5a8c5a",
+                              display: "inline-block"
+                            }
+                          }
+                        ),
+                        "Online \xB7 replies in seconds"
+                      ]
+                    }
+                  )
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxs2(
+                "div",
+                {
+                  className: "assistly-font-mono",
+                  style: {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 10px",
+                    fontSize: 10,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: "var(--assistly-ink-soft)",
+                    background: "var(--assistly-paper-2)",
+                    border: "1px solid var(--assistly-hairline)",
+                    borderRadius: 999
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx5(ShieldCheck, { size: 12, strokeWidth: 1.6, style: { color: "var(--assistly-brass)" } }),
+                    "Secure"
+                  ]
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsx5(
+          "main",
+          {
+            className: "assistly-scroll",
+            style: {
+              position: "relative",
+              zIndex: 1,
+              flex: 1,
+              overflowY: "auto",
+              padding: "28px 20px 24px",
+              background: "transparent"
+            },
+            children: /* @__PURE__ */ jsx5(
+              "div",
+              {
+                style: {
+                  maxWidth: 760,
+                  margin: "0 auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 18
+                },
+                children: /* @__PURE__ */ jsx5(Messages_default, { messages: message, chatbotName })
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxs2(
+          "footer",
+          {
+            style: {
+              position: "relative",
+              zIndex: 1,
+              padding: "16px 20px 22px",
+              background: "linear-gradient(180deg, rgba(245,241,232,0) 0%, var(--assistly-paper) 30%)",
+              borderTop: "1px solid var(--assistly-hairline)"
+            },
+            children: [
+              /* @__PURE__ */ jsx5(Form, __spreadProps(__spreadValues({}, form), { children: /* @__PURE__ */ jsxs2(
+                "form",
+                {
+                  onSubmit: form.handleSubmit(onsubmit),
+                  style: {
+                    maxWidth: 760,
+                    margin: "0 auto",
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 10
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx5(
+                      FormField,
+                      {
+                        control: form.control,
+                        name: "message",
+                        render: ({ field }) => /* @__PURE__ */ jsx5(FormItem, { style: { flex: 1, margin: 0 }, children: /* @__PURE__ */ jsx5(FormControl, { children: /* @__PURE__ */ jsx5(
+                          "div",
+                          {
+                            style: {
+                              position: "relative",
+                              background: "#fffefb",
+                              border: "1px solid var(--assistly-hairline-strong)",
+                              borderRadius: 14,
+                              boxShadow: "0 1px 0 rgba(26,20,15,0.02), 0 6px 18px rgba(26,20,15,0.04)",
+                              transition: "border-color 180ms ease, box-shadow 180ms ease"
+                            },
+                            children: /* @__PURE__ */ jsx5(
+                              Input,
+                              __spreadProps(__spreadValues({}, field), {
+                                placeholder: onboardingStep === 1 ? "Your name\u2026" : onboardingStep === 2 ? "Your email\u2026" : "Write a message\u2026",
+                                style: {
+                                  width: "100%",
+                                  padding: "14px 16px",
+                                  fontSize: 15,
+                                  lineHeight: 1.5,
+                                  color: "var(--assistly-ink)",
+                                  background: "transparent",
+                                  border: "none",
+                                  outline: "none",
+                                  fontFamily: "inherit",
+                                  borderRadius: 14
+                                },
+                                onFocus: (e) => {
+                                  const wrap = e.currentTarget.parentElement;
+                                  wrap.style.borderColor = "var(--assistly-brass)";
+                                  wrap.style.boxShadow = "0 0 0 3px rgba(184,137,58,0.18), 0 6px 18px rgba(26,20,15,0.04)";
+                                },
+                                onBlur: (e) => {
+                                  const wrap = e.currentTarget.parentElement;
+                                  wrap.style.borderColor = "var(--assistly-hairline-strong)";
+                                  wrap.style.boxShadow = "0 1px 0 rgba(26,20,15,0.02), 0 6px 18px rgba(26,20,15,0.04)";
+                                }
+                              })
+                            )
+                          }
+                        ) }) })
+                      }
+                    ),
+                    /* @__PURE__ */ jsx5(
+                      "button",
+                      {
+                        type: "submit",
+                        disabled: form.formState.isSubmitting || !form.formState.isValid || loading,
+                        className: "assistly-send",
+                        "aria-label": "Send message",
+                        style: {
+                          width: 52,
+                          height: 52,
+                          borderRadius: 14,
+                          border: "none",
+                          cursor: "pointer",
+                          display: "grid",
+                          placeItems: "center",
+                          flexShrink: 0
+                        },
+                        children: loading ? /* @__PURE__ */ jsx5(
+                          "span",
+                          {
+                            style: {
+                              width: 18,
+                              height: 18,
+                              border: "2px solid rgba(245,241,232,0.35)",
+                              borderTopColor: "var(--assistly-paper)",
+                              borderRadius: "50%",
+                              animation: "assistly-spin 0.9s linear infinite",
+                              display: "inline-block"
+                            }
+                          }
+                        ) : /* @__PURE__ */ jsx5(Send, { size: 18, strokeWidth: 2 })
+                      }
+                    )
+                  ]
+                }
+              ) })),
+              /* @__PURE__ */ jsxs2(
+                "span",
+                {
+                  className: "assistly-font-mono",
+                  style: {
+                    display: "block",
+                    maxWidth: 760,
+                    margin: "10px auto 0",
+                    fontSize: 10,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: "var(--assistly-ink-mute)",
+                    textAlign: "center"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx5(ArrowUpRight, { size: 10, strokeWidth: 1.8, style: { verticalAlign: "-1px", marginRight: 4 } }),
+                    "Powered by Assistly"
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsx5("style", { children: `@keyframes assistly-spin { to { transform: rotate(360deg); } }` })
+            ]
+          }
+        )
+      ]
+    }
+  );
 }
 var ChatbotClient_default = ChatbotClient;
 
+// src/lib/injectStyles.ts
+var injected = false;
+var injectedHash = null;
+function hashCss(css) {
+  let h = 5381;
+  for (let i = 0; i < css.length; i++) {
+    h = (h << 5) + h ^ css.charCodeAt(i);
+  }
+  return (h >>> 0).toString(36);
+}
+function ensureAssistlyStyles(css) {
+  if (typeof document === "undefined") return;
+  const h = hashCss(css);
+  if (injected && injectedHash === h) return;
+  injected = true;
+  injectedHash = h;
+  document.querySelectorAll("style[data-assistly-style]").forEach((el) => el.remove());
+  const style = document.createElement("style");
+  style.setAttribute("data-assistly-style", h);
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+var fontsInjected = false;
+var FONT_HREF = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap";
+function ensureAssistlyFonts() {
+  if (typeof document === "undefined") return;
+  if (fontsInjected) return;
+  if (document.querySelector("link[data-assistly-fonts]")) {
+    fontsInjected = true;
+    return;
+  }
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = FONT_HREF;
+  link.setAttribute("data-assistly-fonts", "true");
+  document.head.appendChild(link);
+  fontsInjected = true;
+}
+
+// src/styles.tokens
+var styles_default = `/* Assistly embed \u2014 base styles
+ * ------------------------------------------------------------
+ * This file is compiled at build time and injected into the
+ * consumer page on mount. It defines the design tokens the
+ * React components reference (shadcn-style + custom palette)
+ * so the widget renders identically regardless of the host
+ * app's Tailwind/theme configuration.
+ */
+
+:root {
+  /* --- Paper & ink palette --------------------------------- */
+  --assistly-paper: #f5f1e8;          /* warm bone */
+  --assistly-paper-2: #efe9dc;        /* slightly deeper bone */
+  --assistly-ink: #1a140f;            /* near-black, warm */
+  --assistly-ink-soft: #3a322a;       /* secondary text */
+  --assistly-ink-mute: #7a7166;       /* tertiary / meta */
+  --assistly-hairline: rgba(26, 20, 15, 0.12);
+  --assistly-hairline-strong: rgba(26, 20, 15, 0.22);
+
+  /* --- Brass accent --------------------------------------- */
+  --assistly-brass: #b8893a;
+  --assistly-brass-soft: #d4ad6a;
+
+  /* --- shadcn aliases consumed by button/input ------------- */
+  --background: var(--assistly-paper);
+  --foreground: var(--assistly-ink);
+  --primary: var(--assistly-ink);
+  --primary-foreground: #f5f1e8;
+  --secondary: var(--assistly-paper-2);
+  --secondary-foreground: var(--assistly-ink);
+  --muted: var(--assistly-paper-2);
+  --muted-foreground: var(--assistly-ink-mute);
+  --accent: var(--assistly-brass-soft);
+  --accent-foreground: var(--assistly-ink);
+  --destructive: #8a2a2a;
+  --border: var(--assistly-hairline-strong);
+  --input: var(--assistly-hairline-strong);
+  --ring: var(--assistly-brass);
+
+  /* --- Component-specific aliases ------------------------- */
+  --hairline: var(--assistly-hairline);
+  --brass-2: var(--assistly-brass);
+  --muted-2: var(--assistly-ink-mute);
+  --assistly-primary: var(--assistly-ink);
+}
+
+/* --- Reset inside the widget ----------------------------- */
+.assistly-root,
+.assistly-root * {
+  box-sizing: border-box;
+}
+
+.assistly-root {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--assistly-ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.assistly-font-display {
+  font-family: 'Fraunces', 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-feature-settings: "ss01", "ss02";
+}
+
+.assistly-font-mono {
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* --- Paper grain overlay --------------------------------- */
+.assistly-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0 0.06  0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* --- Scrollbar ------------------------------------------- */
+.assistly-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.assistly-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.assistly-scroll::-webkit-scrollbar-thumb {
+  background: var(--assistly-hairline-strong);
+  border-radius: 999px;
+}
+.assistly-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--assistly-ink-mute);
+}
+
+/* --- Typing indicator ------------------------------------ */
+.assistly-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--assistly-brass);
+  animation: assistly-bounce 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.assistly-dot:nth-child(2) { animation-delay: 0.12s; background: var(--assistly-ink-soft); }
+.assistly-dot:nth-child(3) { animation-delay: 0.24s; background: var(--assistly-brass-soft); }
+.assistly-dot:nth-child(4) { animation-delay: 0.36s; background: var(--assistly-ink-mute); }
+
+@keyframes assistly-bounce {
+  0%, 60%, 100% { transform: translate3d(0, 0, 0); }
+  30%           { transform: translate3d(0, -5px, 0); }
+}
+
+/* --- Bubble entrance ------------------------------------- */
+.assistly-bubble-in {
+  animation: assistly-spring 520ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+@keyframes assistly-spring {
+  0%   { transform: scale(0.94) translate3d(0, 6px, 0); opacity: 0; }
+  60%  { transform: scale(1.015) translate3d(0, -1px, 0); opacity: 1; }
+  100% { transform: scale(1) translate3d(0, 0, 0); opacity: 1; }
+}
+
+/* --- Status pulse ---------------------------------------- */
+.assistly-pulse {
+  position: relative;
+}
+.assistly-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: #5a8c5a;
+  opacity: 0.35;
+  animation: assistly-pulse 2.4s ease-out infinite;
+}
+@keyframes assistly-pulse {
+  0%   { transform: scale(0.6); opacity: 0.45; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* --- Send button hover ----------------------------------- */
+.assistly-send {
+  position: relative;
+  background: var(--assistly-ink);
+  color: var(--assistly-paper);
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 14px rgba(26,20,15,0.18);
+}
+.assistly-send:hover:not(:disabled) {
+  background: var(--assistly-ink-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 22px rgba(26,20,15,0.24);
+}
+.assistly-send:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(26,20,15,0.18);
+}
+.assistly-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Markdown content ------------------------------------ */
+.assistly-prose p {
+  margin: 0 0 0.6em 0;
+  white-space: pre-wrap;
+}
+.assistly-prose p:last-child { margin-bottom: 0; }
+.assistly-prose ul, .assistly-prose ol {
+  margin: 0.4em 0 0.6em 1.1em;
+}
+.assistly-prose li { margin-bottom: 0.25em; }
+.assistly-prose code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  background: rgba(26, 20, 15, 0.07);
+  border-radius: 3px;
+}
+.assistly-prose a {
+  color: var(--assistly-brass);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+.assistly-prose a:hover { color: var(--assistly-ink); }
+.assistly-prose h1, .assistly-prose h2, .assistly-prose h3 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em 0;
+  letter-spacing: -0.01em;
+}
+.assistly-prose h1 { font-size: 1.25em; }
+.assistly-prose h2 { font-size: 1.1em; }
+.assistly-prose h3 { font-size: 1em; }
+.assistly-prose strong { font-weight: 600; }
+
+/* --- Caret for streaming --------------------------------- */
+.assistly-caret::after {
+  content: '\u258D';
+  display: inline-block;
+  margin-left: 1px;
+  color: var(--assistly-brass);
+  animation: assistly-blink 1s steps(1) infinite;
+}
+@keyframes assistly-blink {
+  50% { opacity: 0; }
+}
+`;
+
+// src/lib/styles.ts
+var styles_default2 = styles_default;
+
 // src/widget.tsx
-import { jsx as jsx9 } from "react/jsx-runtime";
+import { jsx as jsx6 } from "react/jsx-runtime";
 function AssistlyChat({
   chatbotId,
   origin,
@@ -834,25 +1162,35 @@ function AssistlyChat({
   const client = useMemo(() => createApolloClient(origin), [origin]);
   const [mounted, setMounted] = useState3(false);
   useEffect3(() => {
-    setMounted(true);
-    onReady == null ? void 0 : onReady();
     try {
+      ensureAssistlyStyles(styles_default2);
+      ensureAssistlyFonts();
+      setMounted(true);
+      onReady == null ? void 0 : onReady();
     } catch (err) {
       onError == null ? void 0 : onError(err);
     }
   }, [onReady, onError]);
   if (!mounted) return null;
-  return /* @__PURE__ */ jsx9(ApolloProvider, { client, children: /* @__PURE__ */ jsx9(
+  const themeVars = primaryColor ? {
+    ["--assistly-brass"]: primaryColor,
+    ["--assistly-primary"]: primaryColor
+  } : {};
+  return /* @__PURE__ */ jsx6(ApolloProvider, { client, children: /* @__PURE__ */ jsx6(
     "div",
     {
+      className: "assistly-root",
       style: __spreadValues({
         width: "100%",
         height: "100%",
-        minHeight: 400,
+        minHeight: 520,
         display: "flex",
-        flexDirection: "column"
-      }, primaryColor ? { "--assistly-primary": primaryColor } : null),
-      children: /* @__PURE__ */ jsx9(ChatbotClient_default, { id: String(chatbotId), chatbotName: "Assistant", origin })
+        flexDirection: "column",
+        position: "relative",
+        background: "var(--assistly-paper)",
+        color: "var(--assistly-ink)"
+      }, themeVars),
+      children: /* @__PURE__ */ jsx6(ChatbotClient_default, { id: String(chatbotId), chatbotName: "Assistant", origin })
     }
   ) });
 }

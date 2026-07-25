@@ -4,12 +4,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ApolloProvider } from '@apollo/client';
 import { createApolloClient } from './ApolloProvider';
 import ChatbotClient from './ChatbotClient';
+import { ensureAssistlyFonts, ensureAssistlyStyles } from './lib/injectStyles';
+import assistlyCss from './lib/styles';
 
 export type AssistlyChatProps = {
   chatbotId: number;
   /** Origin of the Assistly deployment that hosts the chat API, e.g. https://chatbot-xi-rose-68.vercel.app */
   origin: string;
-  /** Optional brand color for accents */
+  /** Optional brand color for accents (tints the brass accent + online dot) */
   primaryColor?: string;
   /** Fires when the chat panel has mounted and is ready to receive input */
   onReady?: () => void;
@@ -22,6 +24,15 @@ export type AssistlyChatProps = {
  * active chat) inside whatever container the customer places it in. Talks
  * directly to the Assistly API at `${origin}/api/...` — no iframe, no
  * cross-origin cookie issues.
+ *
+ * Styling is inlined into the published JS bundle (esbuild `text` loader
+ * at build time, injected into <head> on mount). Consumers only need:
+ *
+ *   import { AssistlyChat } from '@shaimaababiker/embed';
+ *
+ * Theme tokens are exposed as CSS variables on the root wrapper, e.g.
+ * `--assistly-brass`, `--assistly-ink`, `--assistly-paper`, so the host
+ * page can override them at any ancestor level.
  */
 export default function AssistlyChat({
   chatbotId,
@@ -34,10 +45,11 @@ export default function AssistlyChat({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    onReady?.();
     try {
-      // Reserved for future telemetry.
+      ensureAssistlyStyles(assistlyCss);
+      ensureAssistlyFonts();
+      setMounted(true);
+      onReady?.();
     } catch (err) {
       onError?.(err as Error);
     }
@@ -45,17 +57,27 @@ export default function AssistlyChat({
 
   if (!mounted) return null;
 
+  const themeVars: React.CSSProperties = primaryColor
+    ? ({
+        ['--assistly-brass' as any]: primaryColor,
+        ['--assistly-primary' as any]: primaryColor,
+      } as React.CSSProperties)
+    : {};
+
   return (
     <ApolloProvider client={client}>
       <div
+        className="assistly-root"
         style={{
           width: '100%',
           height: '100%',
-          minHeight: 400,
+          minHeight: 520,
           display: 'flex',
           flexDirection: 'column',
-          // CSS custom property so consumers can theme accents without prop-drilling.
-          ...(primaryColor ? ({ '--assistly-primary': primaryColor } as React.CSSProperties) : null),
+          position: 'relative',
+          background: 'var(--assistly-paper)',
+          color: 'var(--assistly-ink)',
+          ...themeVars,
         }}
       >
         <ChatbotClient id={String(chatbotId)} chatbotName="Assistant" origin={origin} />

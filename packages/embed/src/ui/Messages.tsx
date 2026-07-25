@@ -1,12 +1,10 @@
-'use client'
+'use client';
 
-import { Message } from "../types"
+import { Message } from "../types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import Avatar from "./Avatar";
 import { UserCircle } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { AiBubble, UserBubble, FourDotWave } from "./ChatMotion";
 
 /* -------------------------------------------------------------------------- */
 /*  Small helpers                                                              */
@@ -21,7 +19,17 @@ function formatTime(iso: string) {
   }
 }
 
-function TypewriterMarkdown({ text, isFresh, components, onType }: { text: string, isFresh: boolean, components: any, onType?: () => void }) {
+function TypewriterMarkdown({
+  text,
+  isFresh,
+  components,
+  onType,
+}: {
+  text: string;
+  isFresh: boolean;
+  components: any;
+  onType?: () => void;
+}) {
   const [displayedText, setDisplayedText] = useState("");
   const [index, setIndex] = useState(0);
 
@@ -36,20 +44,20 @@ function TypewriterMarkdown({ text, isFresh, components, onType }: { text: strin
         setDisplayedText((prev) => prev + text[index]);
         setIndex((prev) => prev + 1);
         if (onType) onType();
-      }, 15);
+      }, 14);
       return () => clearTimeout(timeout);
     } else if (!isFresh) {
       setDisplayedText(text || "");
     }
   }, [index, text, isFresh]);
 
+  const showCaret = isFresh && index < text.length;
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={components}
-    >
-      {isFresh ? displayedText : text}
-    </ReactMarkdown>
+    <span className={showCaret ? 'assistly-caret' : undefined}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {isFresh ? displayedText : text}
+      </ReactMarkdown>
+    </span>
   );
 }
 
@@ -57,7 +65,15 @@ function TypewriterMarkdown({ text, isFresh, components, onType }: { text: strin
 /*  Component                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }: { messages: Message[], chatbotName: string, logoUrl?: string, isReviewPage?: boolean }) {
+function Messages({
+  messages,
+  chatbotName,
+  isReviewPage = false,
+}: {
+  messages: Message[];
+  chatbotName: string;
+  isReviewPage?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<number | string | null>(null);
 
@@ -71,33 +87,14 @@ function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }: { me
     scrollToBottom();
   }, [messages]);
 
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   const markdownComponents = {
-    ul: ({ node, ...props }: any) => (<ul className="list-disc list-inside ml-5 mb-3" {...props} />),
-    ol: ({ node, ...props }: any) => (<ol className="list-decimal list-inside ml-5 mb-3" {...props} />),
-    h1: ({ node, ...props }: any) => (<h1 className="text-2xl font-bold mb-3 font-display" {...props} />),
-    h2: ({ node, ...props }: any) => (<h2 className="text-xl font-bold mb-3 font-display" {...props} />),
-    h3: ({ node, ...props }: any) => (<h3 className="text-lg font-bold mb-3 font-display" {...props} />),
-    table: ({ node, ...props }: any) => (<table className="table-auto mb-3 w-full border-separate border-2 rounded-sm border-spacing-4" style={{ borderColor: "rgba(26,20,15,0.18)" }} {...props} />),
-    th: ({ node, ...props }: any) => (<th className="text-left underline" {...props} />),
-    p: ({ node, ...props }: any) => (<p className="whitespace-pre-wrap mb-3 last:mb-0 leading-relaxed" {...props} />),
-    a: ({ node, ...props }: any) => (<a className="hover:underline font-semibold" style={{ color: "#c45d4f" }} rel="noopener noreferrer" target="_blank" {...props} />),
-    code: ({ node, ...props }: any) => (
-      <code
-        className="px-1.5 py-0.5 rounded font-mono text-[13px]"
-        style={{ background: "rgba(26,20,15,0.10)" }}
-        {...props}
-      />
-    ),
+    ul: ({ node, ...props }: any) => <ul {...props} />,
+    ol: ({ node, ...props }: any) => <ol {...props} />,
+    a: ({ node, ...props }: any) => <a rel="noopener noreferrer" target="_blank" {...props} />,
   };
 
   return (
-    <div className="flex flex-1 flex-col space-y-7 py-8 px-5 md:px-10 bg-transparent rounded-lg scroll-smooth ">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {messages.map((message, index) => {
         const isSender = message.sender !== "user";
         const isThinking = message.content === "" || message.content === "Thinking...";
@@ -109,95 +106,149 @@ function Messages({ messages, chatbotName, logoUrl, isReviewPage = false }: { me
             key={message.id || index}
             onMouseEnter={() => setHoveredId(message.id)}
             onMouseLeave={() => setHoveredId(null)}
-            className={`chat ${isSender ? "chat-start" : "chat-end"} relative group overflow-hidden`}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: isSender ? 'flex-start' : 'flex-end',
+              maxWidth: '100%',
+            }}
           >
-            {isReviewPage && (
-              <p className="absolute -bottom-5 text-xs text-gray-300">
-                sent {new Date(message.created_at).toLocaleString()}
-              </p>
-            )}
-
-            {isFresh && (
-              <span
+            {/* ----- Header row: avatar + name + meta ----- */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 8,
+                padding: isSender ? '0 4px' : '0 4px',
+                flexDirection: isSender ? 'row' : 'row-reverse',
+              }}
+            >
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  background: isSender
+                    ? 'var(--assistly-paper-2)'
+                    : 'var(--assistly-ink)',
+                  color: isSender ? 'var(--assistly-ink)' : 'var(--assistly-paper)',
+                  border: '1px solid var(--assistly-hairline-strong)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                }}
                 aria-hidden
-                className="ring-out pointer-events-none absolute -inset-2 rounded-[26px]"
-              />
-            )}
-
-            <div className={`chat-image avatar w-10 ${!isSender && "mr-4"}`}>
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={chatbotName || "Chatbot logo"}
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 rounded-full border object-cover"
-                  style={{ borderColor: "var(--hairline)" }}
+              >
+                {isSender ? (
+                  <span
+                    style={{
+                      fontFamily: 'Fraunces, Georgia, serif',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {chatbotName.charAt(0).toUpperCase()}
+                  </span>
+                ) : (
+                  <UserCircle size={14} strokeWidth={1.6} />
+                )}
+              </div>
+              <div
+                className="assistly-font-mono"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 10,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--assistly-ink-mute)',
+                }}
+              >
+                <span style={{ color: 'var(--assistly-ink-soft)', fontWeight: 500 }}>
+                  {isSender ? chatbotName || 'assistant' : 'you'}
+                </span>
+                <span
+                  style={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: '50%',
+                    background: 'var(--assistly-ink-mute)',
+                    opacity: showMeta ? 1 : 0,
+                    transition: 'opacity 200ms',
+                  }}
                 />
-              ) : isSender ? (
-                <div
-                  className="border h-12 w-12 rounded-full bg-white overflow-hidden"
-                  style={{ borderColor: "var(--hairline)" }}
-                >
-                  <Avatar seed={chatbotName} className="h-12 w-12" />
-                </div>
-              ) : (
-                <div className="h-12 w-12 rounded-full grid place-items-center" style={{ background: "rgba(244,234,215,0.06)" }}>
-                  <UserCircle className="text-[var(--brass-2)]" />
-                </div>
-              )}
+                <span style={{ opacity: showMeta ? 1 : 0, transition: 'opacity 200ms' }}>
+                  {formatTime(message.created_at)}
+                </span>
+              </div>
             </div>
 
-            {isSender ? (
-              <AiBubble
-                springIn={isFresh}
-                typing={isThinking}
-                className="chat-bubble relative rounded-2xl px-4 py-3 max-w-[80%] font-body text-[15px] leading-relaxed"
-                style={isThinking ? {} : { border: "1px solid rgba(224,176,112,0.18)" }}
-              >
-                {isThinking ? (
-                  <div className="flex items-center gap-3 py-1" style={{ color: "#1e1e1e" }}>
-                    <FourDotWave />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-70">
-                      Thinking...
-                    </span>
-                  </div>
-                ) : (
+            {/* ----- Bubble ----- */}
+            <div
+              className={`${isSender ? 'assistly-bubble-in' : ''}`}
+              style={{
+                position: 'relative',
+                maxWidth: 'min(82%, 640px)',
+                padding: '12px 16px',
+                borderRadius: isSender ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
+                background: isSender ? '#fffefb' : 'var(--assistly-ink)',
+                color: isSender ? 'var(--assistly-ink)' : 'var(--assistly-paper)',
+                border: isSender
+                  ? '1px solid var(--assistly-hairline-strong)'
+                  : '1px solid var(--assistly-ink)',
+                boxShadow: isSender
+                  ? '0 1px 0 rgba(26,20,15,0.02), 0 8px 24px rgba(26,20,15,0.05)'
+                  : '0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(26,20,15,0.18)',
+                fontSize: 15,
+                lineHeight: 1.6,
+              }}
+            >
+              {isThinking ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '2px 0',
+                    minHeight: 22,
+                  }}
+                >
+                  <span className="assistly-dot" />
+                  <span className="assistly-dot" />
+                  <span className="assistly-dot" />
+                  <span className="assistly-dot" />
+                  <span
+                    className="assistly-font-mono"
+                    style={{
+                      marginLeft: 4,
+                      fontSize: 10,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      color: 'var(--assistly-ink-mute)',
+                    }}
+                  >
+                    Thinking…
+                  </span>
+                </div>
+              ) : isSender ? (
+                <div className="assistly-prose">
                   <TypewriterMarkdown
                     text={message.content}
                     isFresh={isFresh}
                     components={markdownComponents}
                     onType={() => scrollToBottom(false)}
                   />
-                )}
-              </AiBubble>
-            ) : (
-              <UserBubble
-                springIn={isFresh}
-                className="chat-bubble relative rounded-2xl px-4 py-3 max-w-[80%] font-body text-[15px] leading-relaxed"
-                style={{
-                  background: "#e9e3e3ff",
-                  color: "#1e1e1e",
-                  border: "1px solid rgba(231, 228, 224, 0.22)",
-                }}
-              >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents}
-                >
-                  {message.content}
-                </ReactMarkdown>
-              </UserBubble>
-            )}
-
-            <div
-              className={`mt-1.5 px-1  flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-opacity duration-200 ${showMeta ? "opacity-100" : "opacity-0"
-                }`}
-              style={{ color: "var(--muted-2)" }}
-            >
-              <span>{isSender ? chatbotName || "assistant" : "you"}</span>
-              <span className="w-1 h-1 rounded-full" style={{ background: "var(--muted-2)" }} />
-              <span>{formatTime(message.created_at)}</span>
+                </div>
+              ) : (
+                <div className="assistly-prose">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         );

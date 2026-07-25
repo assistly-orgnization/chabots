@@ -245,7 +245,7 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
               <Button
                 type="submit"
                 disabled={form.formState.isSubmitting || !form.formState.isValid || loading}
-                className="h-12 w-12 md:h-16 md:w-16 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shrink-0"
+                className="h-12 w-12 md:h-16 md:w-16 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shrink-0"
               >
                 {loading ? (
                   <div className="h-6 w-6 md:h-8 md:w-8 border-2 border-white border-t-transparent rounded-full animate-spin" />

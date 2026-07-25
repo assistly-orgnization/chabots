@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Send, ShieldCheck, ArrowUpRight } from "lucide-react";
 
 import {
   Message,
@@ -13,11 +14,9 @@ import {
 } from "./types";
 import startNewChat from "./lib/startNewChat";
 import { GET_MESSEGES_BY_CHAT_SESSION_ID } from "./graphql/queries";
-import Avatar from "./ui/Avatar";
 import Messages from "./ui/Messages";
-import { FormControl, FormField, FormItem, Form, } from "./ui/form";
+import { FormControl, FormField, FormItem, Form } from "./ui/form";
 import { Input } from "./ui/input";
-import { Button } from "./ui/button";
 
 type ChatbotClientProps = {
   id: string;
@@ -38,7 +37,7 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
   const [message, setMessage] = useState<Message[]>([
     {
       id: -1,
-      content: `Hi there! I'm ${chatbotName}. I'd love to help you out, but first, could you tell me your name?`,
+      content: `Hi there — I'm ${chatbotName}. I'd love to help, but first, what's your name?`,
       sender: 'ai',
       created_at: new Date().toISOString(),
       chat_session_id: 0,
@@ -47,17 +46,13 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      message: ''
-    }
+    defaultValues: { message: '' },
+    mode: 'onChange',
   });
 
   const { data } = useQuery<MessagesbyChatSessionIdResponse, MessagesbyChatSessionIdResponseVariables>(
     GET_MESSEGES_BY_CHAT_SESSION_ID,
-    {
-      variables: { chat_session_id: chatId },
-      skip: !chatId
-    }
+    { variables: { chat_session_id: chatId }, skip: !chatId }
   );
 
   useEffect(() => {
@@ -78,7 +73,6 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
 
     if (onboardingStep === 1) {
       if (!formMessage.trim()) return;
-
       const userMsg: Message = {
         id: Date.now(),
         content: formMessage,
@@ -86,15 +80,13 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
         sender: 'user',
         created_at: new Date().toISOString(),
       };
-
       const aiMsg: Message = {
         id: Date.now() + 1,
-        content: `It's a pleasure to meet you, ${formMessage}! Just one more thing—what's your email address so we can stay connected?`,
+        content: `Lovely to meet you, ${formMessage}. One more thing — what's your email so we can stay in touch?`,
         chat_session_id: 0,
         sender: 'ai',
         created_at: new Date().toISOString(),
       };
-
       setName(formMessage);
       setOnboardingStep(2);
       setMessage((prev) => [...prev, userMsg, aiMsg]);
@@ -103,17 +95,13 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
 
     if (onboardingStep === 2) {
       if (!formMessage.trim()) return;
-
-      const isValidEmail = (email: string) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      };
-
+      const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       if (!isValidEmail(formMessage.trim())) {
         setMessage((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
-            content: "Please enter a valid email address so we can continue.",
+            content: "That email doesn't look quite right — could you double-check it?",
             chat_session_id: 0,
             sender: 'ai',
             created_at: new Date().toISOString(),
@@ -128,22 +116,18 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
         sender: 'user',
         created_at: new Date().toISOString(),
       };
-
       setMessage((prev) => [...prev, userMsg]);
       setLoading(true);
-
       try {
-        const finalEmail = formMessage;
-        setEmail(finalEmail);
-        const newChatId = await startNewChat(origin, name, finalEmail, Number(id));
+        const newChatId = await startNewChat(origin, name, formMessage, Number(id));
+        setEmail(formMessage);
         setChatId(newChatId);
         setOnboardingStep(3);
-
       } catch (error) {
         console.error('Error starting chat:', error);
         setMessage((prev) => [...prev, {
           id: Date.now() + 1,
-          content: "Sorry, I had trouble setting up your session. Could you please try entering your email again?",
+          content: "Sorry — I had trouble setting up your session. Mind entering your email again?",
           chat_session_id: 0,
           sender: 'ai',
           created_at: new Date().toISOString(),
@@ -155,7 +139,6 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
     }
 
     if (!chatId) return;
-
     const userMessage: Message = {
       id: Date.now(),
       content: formMessage,
@@ -163,7 +146,6 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
       sender: 'user',
       created_at: new Date().toISOString(),
     };
-
     const loadingMessage: Message = {
       id: Date.now() + 1,
       content: 'Thinking...',
@@ -179,12 +161,12 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name,
+          name,
           chat_session_id: chatId,
           chabot_id: Number(id),
           content: formMessage,
           created_at: new Date().toISOString(),
-        })
+        }),
       });
       const result = await response.json();
       setMessage((prevMessages) =>
@@ -197,74 +179,291 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  Layout                                                             */
+  /* ------------------------------------------------------------------ */
   return (
-    <div className="fixed inset-0 flex flex-col bg-gray-50 text-slate-900 md:p-6 md:pb-0">
-      <div className="flex flex-col w-full max-w-3xl mx-auto flex-1 overflow-hidden md:rounded-t-2xl border border-gray-200 bg-white relative">
-        <div className="border-b border-gray-100 bg-white py-3 px-4 md:py-6 md:px-8 flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-3 md:space-x-4 min-w-0">
-            <div className="relative shrink-0">
-              <Avatar
-                seed={chatbotName ?? 'default-seed'}
-                className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 rounded-full border border-gray-200"
-              />
-              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm md:text-base font-semibold text-slate-900">
-                {chatbotName || 'Assistant'}
-              </h1>
-              <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                Online
-              </p>
-            </div>
-          </div>
-          <div className="hidden sm:block text-[11px] font-medium text-slate-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-            Secure Session
-          </div>
-        </div>
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        minHeight: 520,
+        background: 'var(--assistly-paper)',
+        color: 'var(--assistly-ink)',
+        overflow: 'hidden',
+      }}
+    >
+      <div className="assistly-grain" />
 
-        <div className="flex-1 relative bg-white pb-32 md:pb-36 overflow-y-auto">
-          <Messages messages={message} chatbotName={chatbotName || ''} />
-        </div>
-
-        <div className="absolute bottom-0 w-full bg-white p-3 md:p-6 border-t border-gray-100">
-          <Form {...form}>
-            <form
-              className="relative flex items-center gap-2 md:gap-3 max-w-4xl mx-auto"
-              onSubmit={form.handleSubmit(onsubmit)}
+      {/* ======================= HEADER ======================= */}
+      <header
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '18px 24px',
+          background: 'var(--assistly-paper)',
+          borderBottom: '1px solid var(--assistly-hairline)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+          <div
+            style={{
+              position: 'relative',
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'var(--assistly-paper-2)',
+              border: '1px solid var(--assistly-hairline-strong)',
+              display: 'grid',
+              placeItems: 'center',
+              flexShrink: 0,
+            }}
+            aria-hidden
+          >
+            <span
+              style={{
+                fontFamily: 'Fraunces, Georgia, serif',
+                fontSize: 19,
+                fontWeight: 500,
+                color: 'var(--assistly-ink)',
+                letterSpacing: '-0.02em',
+              }}
             >
-              <div className="relative flex-1">
-                <FormField
-                  control={form.control}
-                  name="message"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder={onboardingStep === 1 ? "Your name..." : onboardingStep === 2 ? "Your email..." : "Type a message..."}
-                          className="p-3 md:p-5 rounded-xl bg-gray-50 border-gray-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting || !form.formState.isValid || loading}
-                className="h-12 w-12 md:h-16 md:w-16 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shrink-0"
-              >
-                {loading ? (
-                  <div className="h-6 w-6 md:h-8 md:w-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <p className="cursor-pointer text-sm md:text-base">Send</p>)}
-              </Button>
-            </form>
-          </Form>
+              {chatbotName.charAt(0).toUpperCase()}
+            </span>
+            <span
+              style={{
+                position: 'absolute',
+                right: -1,
+                bottom: -1,
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#5a8c5a',
+                border: '2px solid var(--assistly-paper)',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span
+              className="assistly-font-display"
+              style={{
+                fontSize: 17,
+                lineHeight: 1.1,
+                color: 'var(--assistly-ink)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {chatbotName}
+            </span>
+            <span
+              className="assistly-font-mono"
+              style={{
+                fontSize: 10,
+                marginTop: 4,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: 'var(--assistly-ink-mute)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: '#5a8c5a',
+                  display: 'inline-block',
+                }}
+              />
+              Online · replies in seconds
+            </span>
+          </div>
         </div>
-      </div>
+
+        <div
+          className="assistly-font-mono"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            fontSize: 10,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--assistly-ink-soft)',
+            background: 'var(--assistly-paper-2)',
+            border: '1px solid var(--assistly-hairline)',
+            borderRadius: 999,
+          }}
+        >
+          <ShieldCheck size={12} strokeWidth={1.6} style={{ color: 'var(--assistly-brass)' }} />
+          Secure
+        </div>
+      </header>
+
+      {/* ======================= MESSAGES ======================= */}
+      <main
+        className="assistly-scroll"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          flex: 1,
+          overflowY: 'auto',
+          padding: '28px 20px 24px',
+          background: 'transparent',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 760,
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+          }}
+        >
+          <Messages messages={message} chatbotName={chatbotName} />
+        </div>
+      </main>
+
+      {/* ======================= INPUT ======================= */}
+      <footer
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          padding: '16px 20px 22px',
+          background: 'linear-gradient(180deg, rgba(245,241,232,0) 0%, var(--assistly-paper) 30%)',
+          borderTop: '1px solid var(--assistly-hairline)',
+        }}
+      >
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onsubmit)}
+            style={{
+              maxWidth: 760,
+              margin: '0 auto',
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 10,
+            }}
+          >
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem style={{ flex: 1, margin: 0 }}>
+                  <FormControl>
+                    <div
+                      style={{
+                        position: 'relative',
+                        background: '#fffefb',
+                        border: '1px solid var(--assistly-hairline-strong)',
+                        borderRadius: 14,
+                        boxShadow: '0 1px 0 rgba(26,20,15,0.02), 0 6px 18px rgba(26,20,15,0.04)',
+                        transition: 'border-color 180ms ease, box-shadow 180ms ease',
+                      }}
+                    >
+                      <Input
+                        {...field}
+                        placeholder={
+                          onboardingStep === 1
+                            ? 'Your name…'
+                            : onboardingStep === 2
+                            ? 'Your email…'
+                            : 'Write a message…'
+                        }
+                        style={{
+                          width: '100%',
+                          padding: '14px 16px',
+                          fontSize: 15,
+                          lineHeight: 1.5,
+                          color: 'var(--assistly-ink)',
+                          background: 'transparent',
+                          border: 'none',
+                          outline: 'none',
+                          fontFamily: 'inherit',
+                          borderRadius: 14,
+                        }}
+                        onFocus={(e) => {
+                          const wrap = e.currentTarget.parentElement as HTMLElement;
+                          wrap.style.borderColor = 'var(--assistly-brass)';
+                          wrap.style.boxShadow = '0 0 0 3px rgba(184,137,58,0.18), 0 6px 18px rgba(26,20,15,0.04)';
+                        }}
+                        onBlur={(e) => {
+                          const wrap = e.currentTarget.parentElement as HTMLElement;
+                          wrap.style.borderColor = 'var(--assistly-hairline-strong)';
+                          wrap.style.boxShadow = '0 1px 0 rgba(26,20,15,0.02), 0 6px 18px rgba(26,20,15,0.04)';
+                        }}
+                      />
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <button
+              type="submit"
+              disabled={form.formState.isSubmitting || !form.formState.isValid || loading}
+              className="assistly-send"
+              aria-label="Send message"
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {loading ? (
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: '2px solid rgba(245,241,232,0.35)',
+                    borderTopColor: 'var(--assistly-paper)',
+                    borderRadius: '50%',
+                    animation: 'assistly-spin 0.9s linear infinite',
+                    display: 'inline-block',
+                  }}
+                />
+              ) : (
+                <Send size={18} strokeWidth={2} />
+              )}
+            </button>
+          </form>
+        </Form>
+        <span
+          className="assistly-font-mono"
+          style={{
+            display: 'block',
+            maxWidth: 760,
+            margin: '10px auto 0',
+            fontSize: 10,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: 'var(--assistly-ink-mute)',
+            textAlign: 'center',
+          }}
+        >
+          <ArrowUpRight size={10} strokeWidth={1.8} style={{ verticalAlign: '-1px', marginRight: 4 }} />
+          Powered by Assistly
+        </span>
+        <style>{`@keyframes assistly-spin { to { transform: rotate(360deg); } }`}</style>
+      </footer>
     </div>
   );
 }
