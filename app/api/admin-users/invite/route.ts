@@ -76,7 +76,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.errors) {
-      const message = result.errors[0]?.message ?? "GraphQL error";
+      const first = result.errors[0];
+      const message = first?.message ?? "GraphQL error";
+      console.error("[/api/admin-users/invite] graphql errors", {
+        errors: result.errors,
+        variables: {
+          owner_clerk_user_id: userId,
+          invited_clerk_user_id: invitedUserId,
+          invited_email: trimmedEmail,
+        },
+      });
       // Unique constraint violation → friendly message.
       if (/unique|duplicate/i.test(message)) {
         return NextResponse.json(
@@ -84,7 +93,10 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         );
       }
-      return NextResponse.json({ error: message }, { status: 400 });
+      return NextResponse.json(
+        { error: message, debug: result.errors },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ ok: true, admin: result.data?.insertAdmin_users });

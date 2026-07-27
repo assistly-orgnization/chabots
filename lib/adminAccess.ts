@@ -69,15 +69,47 @@ export async function canReviewSessionsForChatbot(
 /**
  * Returns true if the user owns at least one chatbot — used to gate
  * the /admin-users settings page.
+ *
+ * Tries the server-side tenant-scoped query first (`chatbotsListByClerkUserId`,
+ * available after StepZen redeploys). Falls back to a full-list client-side
+ * filter so the page still works against older StepZen deployments.
  */
 export async function isOwnerOfAnyChatbot(userId: string): Promise<boolean> {
-  const { data } = await serverClient.query<{
-    chatbotsListByClerkUserId: { id: number }[];
-  }>({
-    query: GET_OWNED_CHATBOT_IDS,
-    variables: { clerk_user_id: userId },
-  });
-  return (data?.chatbotsListByClerkUserId ?? []).length > 0;
+  // Preferred path: tenant-scoped server-side filter.
+  try {
+    const { data, errors } = await serverClient.query<{
+      chatbotsListByClerkUserId: { id: number }[];
+    }>({
+      query: GET_OWNED_CHATBOT_IDS,
+      variables: { clerk_user_id: userId },
+    });
+    if (!errors && (data?.chatbotsListByClerkUserId ?? []).length > 0) {
+      return true;
+    }
+  } catch (error) {
+    console.warn("[adminAccess] tenant-scoped query failed, falling back", error);
+  }
+
+  // Fallback: enumerate all chatbots and filter client-side. Safe to keep
+  // even after StepZen is up to date — it just costs an extra DB read.
+  try {
+    const { data } = await serverClient.query<{
+      chatbotsList: { id: number; clerk_user_id: string }[];
+    }>({
+      query: gql`
+        query AllChatbotsForOwnershipCheck {
+          chatbotsList {
+            id
+            clerk_user_id
+          }
+        }
+      `,
+    });
+    return (data?.chatbotsList ?? []).some((c) => c.clerk_user_id === userId);
+  } catch (error) {
+    console.error("[adminAccess] full-list fallback failed", error);
+    return false;
+  }
 }
 
 /**
