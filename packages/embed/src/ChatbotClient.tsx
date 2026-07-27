@@ -460,7 +460,7 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
           }}
         >
           <ArrowUpRight size={10} strokeWidth={1.8} style={{ verticalAlign: '-1px', marginRight: 4 }} />
-          Powered by Assistly
+          Powered by SMOEDESIGN
         </span>
         <style>{`@keyframes assistly-spin { to { transform: rotate(360deg); } }`}</style>
       </footer>

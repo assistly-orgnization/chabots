@@ -72,7 +72,7 @@ describe('AssistlyChat', () => {
     expect((sendBtn as HTMLButtonElement).disabled).toBe(true);
 
     // Tagline at the bottom
-    expect(screen.getByText(/Powered by Assistly/)).toBeTruthy();
+    expect(screen.getByText(/Powered by SMOEDESIGN/)).toBeTruthy();
 
     // The injected <style> tag is present after mount
     expect(document.head.querySelector('style[data-assistly-style]')).toBeTruthy();
