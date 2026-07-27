@@ -41,6 +41,14 @@ type Guests {
   name: String
 }
 
+type Admin_users {
+  id: Int!
+  owner_clerk_user_id: String!
+  invited_clerk_user_id: String
+  invited_email: String
+  created_at: DateTime!
+}
+
 type Messages {
   chat_session_id: Int
   chat_sessions: Chat_sessions
@@ -267,6 +275,61 @@ type Query {
       """
       configuration: "postgresql_config"
     )
+  " Queries for type 'Admin_users' "
+  admin_users(id: Int!): Admin_users
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      table: "admin_users"
+      configuration: "postgresql_config"
+    )
+  admin_usersList: [Admin_users]
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      table: "admin_users"
+      configuration: "postgresql_config"
+    )
+  # Tenant-scoped query, server-side filtered: returns only the admins invited by the given owner Clerk user.
+  admin_usersListByOwner(owner_clerk_user_id: String!): [Admin_users]
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      query: """
+      SELECT "created_at", "id", "invited_clerk_user_id", "invited_email", "owner_clerk_user_id"
+      FROM "admin_users"
+      WHERE "owner_clerk_user_id" = $1
+      ORDER BY "created_at" DESC
+      """
+      configuration: "postgresql_config"
+    )
+  # Returns rows when an invite exists for the given Clerk user across any owner --
+  # used to filter the review-sessions list. Empty = no access.
+  admin_usersAccessByInvitedUser(invited_clerk_user_id: String!): [Admin_users]
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      query: """
+      SELECT "created_at", "id", "invited_clerk_user_id", "invited_email", "owner_clerk_user_id"
+      FROM "admin_users"
+      WHERE "invited_clerk_user_id" = $1
+      """
+      configuration: "postgresql_config"
+    )
+  # Email fallback -- returns invites where invited_email matches any of the
+  # supplied addresses. Used by the access helper to match pre-signup invites
+  # when the invited user signs in and we know their primary email.
+  admin_usersListByEmails(emails: [String!]!): [Admin_users]
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      query: """
+      SELECT "created_at", "id", "invited_clerk_user_id", "invited_email", "owner_clerk_user_id"
+      FROM "admin_users"
+      WHERE LOWER("invited_email") = ANY($1::text[])
+      """
+      configuration: "postgresql_config"
+    )
 }
 
 """
@@ -482,6 +545,53 @@ type Mutation {
         "content" = COALESCE($3, "content"),
         "created_at" = COALESCE($4, "created_at"),
         "sender" = COALESCE($5, "sender")
+      WHERE
+        "id" = $1
+      RETURNING *
+      """
+      configuration: "postgresql_config"
+    )
+  " Mutations for type 'Admin_users' "
+  # NOTE: admin_users mutations are gated by the operation allowlist in
+  # app/api/graphql/route.ts AND by Clerk auth + owner checks in the
+  # app/api/admin-users/* routes. Do not call directly from untrusted clients.
+  insertAdmin_users(
+    owner_clerk_user_id: String!
+    invited_clerk_user_id: String
+    invited_email: String
+    created_at: DateTime!
+  ): Admin_users
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      table: "admin_users"
+      dml: INSERT
+      configuration: "postgresql_config"
+    )
+  deleteAdmin_users(id: Int!): Admin_users
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      table: "admin_users"
+      dml: DELETE
+      configuration: "postgresql_config"
+    )
+  updateAdmin_users(
+    id: Int!
+    owner_clerk_user_id: String
+    invited_clerk_user_id: String
+    invited_email: String
+    created_at: DateTime
+  ): Admin_users
+    @dbquery(
+      type: "postgresql"
+      schema: "public"
+      query: """
+      UPDATE "admin_users" SET
+        "owner_clerk_user_id" = COALESCE($2, "owner_clerk_user_id"),
+        "invited_clerk_user_id" = COALESCE($3, "invited_clerk_user_id"),
+        "invited_email" = COALESCE($4, "invited_email"),
+        "created_at" = COALESCE($5, "created_at")
       WHERE
         "id" = $1
       RETURNING *

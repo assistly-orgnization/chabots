@@ -123,6 +123,7 @@ query getAllChatbots {
       name
     }
     chatbots {
+      id
       name
       clerk_user_id
     }
@@ -133,7 +134,7 @@ query getAllChatbots {
       created_at
     }
   }
-  
+
    }
  `
 export  const GET_MESSEGES_BY_CHAT_SESSION_ID= gql`
@@ -174,6 +175,42 @@ export const GET_CHAT_SESSION_NOTIFICATION_CONTEXT = gql`
         content
         created_at
       }
+    }
+  }
+`
+
+export const GET_INVITED_ADMINS = gql`
+  query GetInvitedAdmins($owner_clerk_user_id: String!) {
+    admin_usersListByOwner(owner_clerk_user_id: $owner_clerk_user_id) {
+      id
+      owner_clerk_user_id
+      invited_clerk_user_id
+      invited_email
+      created_at
+    }
+  }
+`
+
+export const GET_INVITES_FOR_USER = gql`
+  query GetInvitesForUser($invited_clerk_user_id: String!) {
+    admin_usersAccessByInvitedUser(invited_clerk_user_id: $invited_clerk_user_id) {
+      id
+      owner_clerk_user_id
+      invited_clerk_user_id
+      invited_email
+      created_at
+    }
+  }
+`
+
+export const GET_EMAIL_PENDING_INVITES = gql`
+  query GetEmailPendingInvites($emails: [String!]!) {
+    admin_usersListByEmails(emails: $emails) {
+      id
+      owner_clerk_user_id
+      invited_clerk_user_id
+      invited_email
+      created_at
     }
   }
 `

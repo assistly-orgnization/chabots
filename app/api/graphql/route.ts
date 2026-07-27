@@ -34,6 +34,9 @@ const ALLOWED_OPERATIONS: Record<
   ChatbotsListByClerkUserId: { kind: 'query' },
   getChatSessionsMessages: { kind: 'query' },
   GetMessagesByChatSessionId: { kind: 'query', public: true },
+  GetInvitedAdmins: { kind: 'query' },
+  GetInvitesForUser: { kind: 'query' },
+  GetEmailPendingInvites: { kind: 'query' },
   // mutations
   CreateChatbot: { kind: 'mutation' },
   RemoveCharacteristic: { kind: 'mutation' },
@@ -41,6 +44,9 @@ const ALLOWED_OPERATIONS: Record<
   AddCharacteristic: { kind: 'mutation' },
   UpdateCharacteristic: { kind: 'mutation' },
   UpdateChatbot: { kind: 'mutation' },
+  InviteAdmin: { kind: 'mutation' },
+  RemoveAdmin: { kind: 'mutation' },
+  BackfillInvitedUserId: { kind: 'mutation' },
 };
 
 function extractOperationName(body: string): { kind: 'query' | 'mutation'; name: string } | null {

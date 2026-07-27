@@ -1,5 +1,6 @@
 import serverClient from '@/lib/server/serverClient';
 import { GET_CHAT_SESSIONS_MESSAGES } from '@/qraphql/queries/queries';
+import { canReviewSessionsForChatbot } from '@/lib/adminAccess';
 import { GetChatSessionsMessagesResponse } from '@/types/types';
 import { auth } from '@clerk/nextjs/server';
 import * as XLSX from 'xlsx';
@@ -62,8 +63,12 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // Tenant guard — same pattern as the admin pages: filter by clerk_user_id.
-    if (data.chat_sessions.chatbots?.clerk_user_id !== userId) {
+    // Tenant guard — owner OR invited admin can review this chatbot.
+    const allowed = await canReviewSessionsForChatbot(
+      userId,
+      data.chat_sessions.chatbots.id,
+    );
+    if (!allowed) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

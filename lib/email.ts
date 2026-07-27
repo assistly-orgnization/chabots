@@ -1,6 +1,21 @@
 import { Resend } from "resend";
 
-const RESEND_API_KEY = (process.env.RESEND_API_KEY ?? process.env.RESEND_API_KEY)?.trim();
+function readResendKey(): string | undefined {
+  // Accept any casing of the env var. Vercel preserves case but some import
+  // pipelines lowercase names.
+  const candidates = [
+    process.env.RESEND_API_KEY,
+    process.env.RESEND_API_KEY,
+    process.env.resend_API_KEY,
+  ];
+  for (const value of candidates) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
+const RESEND_API_KEY = readResendKey();
 
 if (!RESEND_API_KEY) {
   console.warn(
@@ -41,8 +56,6 @@ export type AdminDigestPayload = {
   chatbotName: string;
   guestName: string | null;
   guestEmail: string | null;
-  latestUserMessage: string;
-  transcript?: string;
   sessionId: number;
   sessionCreatedAt: string;
   appBaseUrl: string;
@@ -57,50 +70,30 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function previewMessage(text: string, max = 280): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= max) return trimmed;
-  return trimmed.slice(0, max - 1) + "…";
-}
-
 function buildDigestHtml(payload: AdminDigestPayload): string {
-  const guest = payload.guestName?.trim() || "A visitor";
-  const email = payload.guestEmail?.trim();
+  const guestName = payload.guestName?.trim() || "A visitor";
+  const guestEmail = payload.guestEmail?.trim();
   const sessionUrl = `${payload.appBaseUrl.replace(/\/$/, "")}/review-sessions/${payload.sessionId}`;
-  const safeMessage = escapeHtml(previewMessage(payload.latestUserMessage));
-  const safeGuest = escapeHtml(guest);
-  const safeEmail = email ? escapeHtml(email) : "";
-  const safeChatbot = escapeHtml(payload.chatbotName);
-
-  const transcriptHtml = payload.transcript
-    ? `
-      <p style="margin: 0 0 8px; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #6b6b6b;">
-        Full transcript
-      </p>
-      <pre style="margin: 0 0 20px; padding: 12px 16px; background: #faf6ef; border: 1px solid #ece3d2; border-radius: 8px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;">${escapeHtml(payload.transcript)}</pre>
-    `
-    : "";
+  const safeName = escapeHtml(guestName);
+  const safeEmail = guestEmail ? escapeHtml(guestEmail) : "";
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1e1e1e; line-height: 1.5;">
-      <h2 style="margin: 0 0 16px; font-size: 18px;">Chat closed on ${safeChatbot}</h2>
+      <h2 style="margin: 0 0 16px; font-size: 18px;">New chat session</h2>
       <p style="margin: 0 0 16px;">
-        <strong>${safeGuest}</strong>${safeEmail ? ` &lt;${safeEmail}&gt;` : ""} just finished a conversation.
+        <strong>Name:</strong> ${safeName}
       </p>
-      <p style="margin: 0 0 8px; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #6b6b6b;">
-        First message
+      ${safeEmail ? `<p style="margin: 0 0 16px;"><strong>Email:</strong> ${safeEmail}</p>` : ""}
+      <p style="margin: 0 0 24px;">
+        <strong>Session ID:</strong> #${payload.sessionId}
       </p>
-      <blockquote style="margin: 0 0 20px; padding: 12px 16px; border-left: 3px solid #b8893a; background: #faf6ef; white-space: pre-wrap;">
-        ${safeMessage}
-      </blockquote>
-      ${transcriptHtml}
       <p style="margin: 0 0 24px;">
         <a href="${sessionUrl}" style="display: inline-block; background: #1e1e1e; color: #faf6ef; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 500;">
           Open conversation
         </a>
       </p>
       <p style="margin: 0; font-size: 12px; color: #6b6b6b;">
-        Sent by Assistly · session #${payload.sessionId} · ${escapeHtml(payload.sessionCreatedAt)}
+        Sent by Assistly · ${escapeHtml(payload.chatbotName)} · ${escapeHtml(payload.sessionCreatedAt)}
       </p>
     </div>
   `.trim();
@@ -110,10 +103,20 @@ export async function sendAdminNewMessageDigest(
   payload: AdminDigestPayload,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   if (!resend) {
+    console.error(
+      "[email] Resend client not initialised — RESEND_API_KEY missing at module load.",
+    );
     return { ok: false, error: "Resend API key not configured" };
   }
 
-  const subject = `Chat closed by ${payload.guestName?.trim() || "a visitor"} on ${payload.chatbotName}`;
+  const subject = `New chat session from ${payload.guestName?.trim() || "a visitor"} on ${payload.chatbotName}`;
+
+  console.log("[email] sending digest via Resend", {
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject,
+    sessionId: payload.sessionId,
+  });
 
   try {
     const { data, error } = await resend.emails.send({
@@ -128,6 +131,7 @@ export async function sendAdminNewMessageDigest(
       return { ok: false, error: error.message ?? "Resend error" };
     }
 
+    console.log("[email] Resend accepted the message", { id: data?.id });
     return { ok: true, id: data?.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Resend error";

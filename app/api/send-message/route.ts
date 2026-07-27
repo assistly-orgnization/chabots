@@ -82,15 +82,8 @@ async function maybeNotifyAdmin({
       return
     }
 
-    const transcript = allMessages
-      .map((m: any) => {
-        const who = m.sender === "user" ? "Guest" : "Assistant"
-        return `${who}: ${m.content}`
-      })
-      .join("\n\n")
-    const firstUserMessage = allMessages.find((m: any) => m.sender === "user")
-
-    if (!firstUserMessage) {
+    const hasUserMessage = allMessages.some((m: any) => m.sender === "user")
+    if (!hasUserMessage) {
       console.log("[notify] no user messages, skipping", { chatSessionId })
       return
     }
@@ -108,8 +101,6 @@ async function maybeNotifyAdmin({
       chatbotName: chatbot.name ?? "your chatbot",
       guestName: guest.name ?? null,
       guestEmail: guest.email ?? null,
-      latestUserMessage: firstUserMessage.content,
-      transcript,
       sessionId: chatSessionId,
       sessionCreatedAt: ctx.created_at,
       appBaseUrl: baseUrl,

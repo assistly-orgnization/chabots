@@ -1,6 +1,7 @@
 import ChatbotSessions from '@/components/ui/ChatbotSessions';
 import serverClient from '@/lib/server/serverClient';
 import { GET_USER_CHATBOTS } from '@/qraphql/queries/queries';
+import { canReviewSessionsForChatbot } from '@/lib/adminAccess';
 import { Chatbot, ChatbotData } from '@/types/types';
 import { auth } from '@clerk/nextjs/server';
 import React from 'react'
@@ -11,18 +12,25 @@ async function ReviewSessions() {
 
 const {data} = await serverClient.query<ChatbotData>({
   query:GET_USER_CHATBOTS,
- 
+
 })
 
 const chatbotsByUser :Chatbot[] = data.chatbotsList
 
-const SortedChatbots = chatbotsByUser
-  .filter(chatbot => chatbot.clerk_user_id === userId)
-  .map((chatbot) => ({  
+// Show chatbots the user owns OR has been invited to review.
+const visible: Chatbot[] = []
+for (const chatbot of chatbotsByUser) {
+  const allowed = await canReviewSessionsForChatbot(userId, chatbot.id)
+  if (!allowed) continue
+  visible.push({
     ...chatbot,
-    chat_sessions: [...chatbot.chat_sessions].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }));
+    chat_sessions: [...chatbot.chat_sessions].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+  })
+}
+const SortedChatbots = visible.sort(
+  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+)
 
   return (
     <div className="flex-1 justify-center pb-20 w-full max-w-5xl px-4">

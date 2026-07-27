@@ -75,3 +75,34 @@ insertGuests(created_at: $created_at, email: $email, name: $name) {
 id
 }
 }`
+
+export const INVITE_ADMIN = gql`
+  mutation InviteAdmin(
+    $owner_clerk_user_id: String!
+    $invited_clerk_user_id: String
+    $invited_email: String
+    $created_at: DateTime!
+  ) {
+    insertAdmin_users(
+      owner_clerk_user_id: $owner_clerk_user_id
+      invited_clerk_user_id: $invited_clerk_user_id
+      invited_email: $invited_email
+      created_at: $created_at
+    ) {
+      id
+      owner_clerk_user_id
+      invited_clerk_user_id
+      invited_email
+      created_at
+    }
+  }
+`;
+
+export const REMOVE_ADMIN = gql`
+  mutation RemoveAdmin($id: Int!) {
+    deleteAdmin_users(id: $id) {
+      id
+      owner_clerk_user_id
+    }
+  }
+`;

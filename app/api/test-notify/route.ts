@@ -15,8 +15,6 @@ export async function GET(_req: NextRequest) {
     chatbotName: "Test Chatbot",
     guestName: "Shaimaa (test)",
     guestEmail: "shaimaaalmubarak00@gmail.com",
-    latestUserMessage: "Hello from the test endpoint — if you see this, the email path is wired up correctly.",
-    transcript: "Guest: Hello from the test endpoint — if you see this, the email path is wired up correctly.\n\nAssistant: This is a test reply.",
     sessionId: 0,
     sessionCreatedAt: new Date().toISOString(),
     appBaseUrl: process.env.NEXT_PUBLIC_VERCEL_URL ?? "http://localhost:3000",

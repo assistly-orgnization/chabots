@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { BotMessageSquare, PencilLine, SearchIcon, X, Menu } from 'lucide-react'
+import { BotMessageSquare, PencilLine, SearchIcon, Users, X, Menu } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
@@ -25,6 +25,13 @@ const navItems = [
     label: 'View',
     sub: 'Chat History',
     id: 'review',
+  },
+  {
+    href: '/admin-users',
+    icon: Users,
+    label: 'Team',
+    sub: 'Permissions',
+    id: 'team',
   },
 ] as const
 

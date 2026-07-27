@@ -2,6 +2,7 @@ import SessionDashboard from "@/components/ui/SessionDashboard"
 import serverClient from "@/lib/server/serverClient"
 import { GET_CHAT_SESSIONS_MESSAGES } from "@/qraphql/queries/queries"
 import { GetChatSessionsMessagesResponse, GetChatSessionsMessagesResponseVariables } from "@/types/types"
+import { canReviewSessionsForChatbot } from "@/lib/adminAccess"
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 
@@ -33,8 +34,12 @@ async function page(props: { params: Promise<{ id: string }> }) {
     )
   }
 
-  // Tenant guard: same pattern as the admin list pages.
-  if (data.chat_sessions.chatbots?.clerk_user_id !== userId) {
+  const chatbotId = data.chat_sessions.chatbots?.id
+  // Tenant guard: owner OR invited admin.
+  if (
+    !chatbotId ||
+    !(await canReviewSessionsForChatbot(userId, chatbotId))
+  ) {
     return (
       <div className="flex-1 p-4 md:p-10 pb-24 text-gray-900 w-full max-w-5xl">
         <h1 className="text-2xl md:text-3xl font-semibold">Not authorized</h1>
