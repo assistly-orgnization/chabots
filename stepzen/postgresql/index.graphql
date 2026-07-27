@@ -6,7 +6,6 @@ type Chat_sessions {
   guest_id: Int
   guests: Guests @materializer(query: "guestsUsingChat_sessions_guest_id_fkey")
   id: Int!
-  last_notified_at: DateTime
   messages: [Messages]
     @materializer(query: "messagesUsingMessages_chat_session_id_fkey")
 }
@@ -303,7 +302,6 @@ type Mutation {
     chatbot_id: Int
     created_at: DateTime
     guest_id: Int
-    last_notified_at: DateTime
   ): Chat_sessions
     @dbquery(
       type: "postgresql"
@@ -312,8 +310,7 @@ type Mutation {
       UPDATE "chat_sessions" SET
         "chatbot_id" = COALESCE($2, "chatbot_id"),
         "created_at" = COALESCE($3, "created_at"),
-        "guest_id" = COALESCE($4, "guest_id"),
-        "last_notified_at" = COALESCE($5, "last_notified_at")
+        "guest_id" = COALESCE($4, "guest_id")
       WHERE
         "id" = $1
       RETURNING *

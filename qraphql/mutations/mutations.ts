@@ -75,24 +75,3 @@ insertGuests(created_at: $created_at, email: $email, name: $name) {
 id
 }
 }`
-
-export const MARK_CHAT_SESSION_NOTIFIED = gql`
-  mutation MarkChatSessionNotified(
-    $id: Int!
-    $chatbot_id: Int
-    $created_at: DateTime
-    $guest_id: Int
-    $last_notified_at: DateTime!
-  ) {
-    updateChat_sessions(
-      id: $id
-      chatbot_id: $chatbot_id
-      created_at: $created_at
-      guest_id: $guest_id
-      last_notified_at: $last_notified_at
-    ) {
-      id
-      last_notified_at
-    }
-  }
-`;

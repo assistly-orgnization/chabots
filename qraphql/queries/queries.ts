@@ -157,7 +157,6 @@ export const GET_CHAT_SESSION_NOTIFICATION_CONTEXT = gql`
     chat_sessions(id: $id) {
       id
       created_at
-      last_notified_at
       guest_id
       chatbot_id
       guests {

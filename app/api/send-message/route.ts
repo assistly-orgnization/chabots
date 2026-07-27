@@ -1,6 +1,6 @@
 import serverClient from "@/lib/server/serverClient"
 import { callGroqChat, callGroqChatStream } from "@/lib/groqPool"
-import { InsertMessage, MARK_CHAT_SESSION_NOTIFIED } from "@/qraphql/mutations/mutations"
+import { InsertMessage } from "@/qraphql/mutations/mutations"
 import { GET_CHATBOTS_by_ID, GET_CHAT_SESSION_NOTIFICATION_CONTEXT } from "@/qraphql/queries/queries"
 import { sendAdminNewMessageDigest } from "@/lib/email"
 import type { GetChatbotByIdResponse, Message } from "@/types/types"
@@ -8,9 +8,15 @@ import { gql } from "@apollo/client"
 import { type NextRequest } from "next/server"
 
 const IDLE_BEFORE_NOTIFY_MS = 5 * 60 * 1000
+const REARM_AFTER_NOTIFY_MS = 60 * 60 * 1000
+
+// In-memory dedupe so a single chat session cannot email the admin more than
+// once per REARM window. Vercel reuses function instances across requests, so
+// this Map persists for the lifetime of the warm instance.
+const notifiedRecently = new Map<number, number>()
 
 function appBaseUrl(req: NextRequest): string {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL
+  const explicit = process.env.NEXT_PUBLIC_VERCEL_URL
   if (explicit) return explicit
   const envUrl = process.env.NEXT_PUBLIC_VERCEL_URL
   if (envUrl) {
@@ -32,6 +38,20 @@ async function maybeNotifyAdmin({
 }): Promise<void> {
   try {
     console.log("[notify] start", { chatSessionId, chatbotId })
+
+    const lastNotifiedAt = notifiedRecently.get(chatSessionId)
+    if (lastNotifiedAt) {
+      const sinceMs = Date.now() - lastNotifiedAt
+      if (sinceMs < REARM_AFTER_NOTIFY_MS) {
+        console.log("[notify] session already notified within rearm window, skipping", {
+          chatSessionId,
+          sinceSec: Math.round(sinceMs / 1000),
+        })
+        return
+      }
+      notifiedRecently.delete(chatSessionId)
+    }
+
     const { data } = await serverClient.query({
       query: GET_CHAT_SESSION_NOTIFICATION_CONTEXT,
       variables: { id: chatSessionId },
@@ -39,16 +59,6 @@ async function maybeNotifyAdmin({
     const ctx = (data as any)?.chat_sessions
     if (!ctx) {
       console.warn("[notify] no session context found", { chatSessionId })
-      return
-    }
-
-    // `last_notified_at` here is treated as a one-shot "already notified" flag:
-    // once set, we never email again for this session.
-    if (ctx.last_notified_at) {
-      console.log("[notify] session already notified, skipping", {
-        chatSessionId,
-        lastNotifiedAt: ctx.last_notified_at,
-      })
       return
     }
 
@@ -72,7 +82,6 @@ async function maybeNotifyAdmin({
       return
     }
 
-    // Collect all user and AI messages for a fuller digest.
     const transcript = allMessages
       .map((m: any) => {
         const who = m.sender === "user" ? "Guest" : "Assistant"
@@ -111,16 +120,7 @@ async function maybeNotifyAdmin({
       return
     }
 
-    await serverClient.mutate({
-      mutation: MARK_CHAT_SESSION_NOTIFIED,
-      variables: {
-        id: chatSessionId,
-        chatbot_id: null,
-        created_at: null,
-        guest_id: null,
-        last_notified_at: new Date().toISOString(),
-      },
-    })
+    notifiedRecently.set(chatSessionId, Date.now())
     console.log("[notify] admin digest sent", { id: result.id, chatSessionId })
   } catch (error) {
     console.error("[notify] unexpected error:", error)
