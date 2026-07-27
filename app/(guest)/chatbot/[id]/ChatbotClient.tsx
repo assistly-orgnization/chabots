@@ -10,35 +10,43 @@ import Messages from "@/components/ui/Messages";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FormControl, FormField, FormItem, FormLabel, FormMessage, Form } from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormMessage, Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const formSchema = z.object({
-  message: z.string().min(3, 'Your Message is too short!'),
+const messageSchema = z.object({
+  message: z.string().min(1, 'Please enter a message.'),
 });
+
+const onboardingSchema = z.object({
+  name: z.string().trim().min(1, 'Please enter your name.'),
+  email: z.string().trim().email('Please enter a valid email address.'),
+});
+
+type OnboardingValues = z.infer<typeof onboardingSchema>;
 
 function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [onboardingStep, setOnboardingStep] = useState(1);
   const [chatId, setChatId] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<Message[]>([
-    {
-      id: -1,
-      content: `Hi there! I'm ${chatbotName}. I'd love to help you out, but first, could you tell me your name?`,
-      sender: 'ai',
-      created_at: new Date().toISOString(),
-      chat_session_id: 0,
-    }
-  ]);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [message, setMessage] = useState<Message[]>([]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const messageForm = useForm<z.infer<typeof messageSchema>>({
+    resolver: zodResolver(messageSchema),
     defaultValues: {
       message: ''
     }
+  });
+
+  const onboardingForm = useForm<OnboardingValues>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+    },
   });
 
   const { data } = useQuery<MessagesbyChatSessionIdResponse, MessagesbyChatSessionIdResponseVariables>(
@@ -50,101 +58,41 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
   );
 
   useEffect(() => {
-    if (data && onboardingStep === 3) {
+    if (data && chatId) {
       const chatSession = data.chat_sessions as any;
       const dbMessages = chatSession.messages || [];
-      // Append DB messages to existing onboarding messages instead of replacing
       setMessage((prev) => {
-        // Only add DB messages that aren't already in the list
         const existingIds = new Set(prev.map((m) => m.id));
         const newMessages = dbMessages.filter((m: Message) => !existingIds.has(m.id));
         return [...prev, ...newMessages];
       });
     }
-  }, [data, onboardingStep]);
+  }, [data, chatId]);
 
-  async function onsubmit(values: z.infer<typeof formSchema>) {
+  async function onOnboardingSubmit(values: OnboardingValues) {
+    setOnboardingError(null);
+    setLoading(true);
+    try {
+      const newChatId = await startNewChat(values.name, values.email, Number(id));
+      setName(values.name);
+      setEmail(values.email);
+      setChatId(newChatId);
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      setOnboardingError(
+        error instanceof Error
+          ? error.message
+          : 'Sorry, I had trouble setting up your session. Please try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onMessageSubmit(values: z.infer<typeof messageSchema>) {
     const { message: formMessage } = values;
-    form.reset();
-
-    if (onboardingStep === 1) {
-      if (!formMessage.trim()) return;
-
-      const userMsg: Message = {
-        id: Date.now(),
-        content: formMessage,
-        chat_session_id: 0,
-        sender: 'user',
-        created_at: new Date().toISOString(),
-      };
-
-      const aiMsg: Message = {
-        id: Date.now() + 1,
-        content: `It's a pleasure to meet you, ${formMessage}! Just one more thing—what's your email address so we can stay connected?`,
-        chat_session_id: 0,
-        sender: 'ai',
-        created_at: new Date().toISOString(),
-      };
-
-      setName(formMessage);
-      setOnboardingStep(2);
-      setMessage((prev) => [...prev, userMsg, aiMsg]);
-      return;
-    }
-
-    if (onboardingStep === 2) {
-      if (!formMessage.trim()) return;
-
-      // basic email validation
-      const isValidEmail = (email: string) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      };
-
-      if (!isValidEmail(formMessage.trim())) {
-        setMessage((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            content: "Please enter a valid email address so we can continue.",
-            chat_session_id: 0,
-            sender: 'ai',
-            created_at: new Date().toISOString(),
-          },
-        ]);
-        return;
-      }
-      const userMsg: Message = {
-        id: Date.now(),
-        content: formMessage,
-        chat_session_id: 0,
-        sender: 'user',
-        created_at: new Date().toISOString(),
-      };
-
-      setMessage((prev) => [...prev, userMsg]);
-      setLoading(true);
-
-      try {
-        const finalEmail = formMessage;
-        setEmail(finalEmail);
-        const newChatId = await startNewChat(name, finalEmail, Number(id));
-        setChatId(newChatId);
-        setOnboardingStep(3);
-
-      } catch (error) {
-        console.error('Error starting chat:', error);
-        setMessage((prev) => [...prev, {
-          id: Date.now() + 1,
-          content: "Sorry, I had trouble setting up your session. Could you please try entering your email again?",
-          chat_session_id: 0,
-          sender: 'ai',
-          created_at: new Date().toISOString(),
-        }]);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+    messageForm.reset();
 
     if (!chatId) return;
 
@@ -220,21 +168,21 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
         </div>
 
         <div className="absolute bottom-0 w-full bg-white p-3 md:p-6 border-t border-gray-100">
-          <Form {...form}>
+          <Form {...messageForm}>
             <form
               className="relative flex items-center gap-2 md:gap-3 max-w-4xl mx-auto"
-              onSubmit={form.handleSubmit(onsubmit)}
+              onSubmit={messageForm.handleSubmit(onMessageSubmit)}
             >
               <div className="relative flex-1">
                 <FormField
-                  control={form.control}
+                  control={messageForm.control}
                   name="message"
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder={onboardingStep === 1 ? "Your name..." : onboardingStep === 2 ? "Your email..." : "Type a message..."}
+                          placeholder="Type a message..."
                           className="p-3 md:p-5 rounded-xl bg-gray-50 border-gray-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all"
                         />
                       </FormControl>
@@ -244,7 +192,7 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
               </div>
               <Button
                 type="submit"
-                disabled={form.formState.isSubmitting || !form.formState.isValid || loading}
+                disabled={messageForm.formState.isSubmitting || !messageForm.formState.isValid || loading}
                 className="h-12 w-12 md:h-16 md:w-16 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shrink-0"
               >
                 {loading ? (
@@ -256,6 +204,97 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
           </Form>
         </div>
       </div>
+
+      {showOnboarding && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200 p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <Avatar
+                seed={chatbotName ?? 'default-seed'}
+                className="w-10 h-10 bg-gray-100 rounded-full border border-gray-200"
+              />
+              <div>
+                <h2 id="onboarding-title" className="text-base font-semibold text-slate-900">
+                  Welcome! Let's get started
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Chatting with {chatbotName || 'Assistant'}
+                </p>
+              </div>
+            </div>
+
+            <Form {...onboardingForm}>
+              <form
+                onSubmit={onboardingForm.handleSubmit(onOnboardingSubmit)}
+                className="space-y-4"
+              >
+                <FormField
+                  control={onboardingForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Name"
+                          autoComplete="name"
+                          className="p-3 rounded-xl bg-gray-50 border-gray-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={onboardingForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="email"
+                          placeholder="Email"
+                          autoComplete="email"
+                          className="p-3 rounded-xl bg-gray-50 border-gray-200 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {onboardingError && (
+                  <p className="text-sm text-red-600" role="alert">
+                    {onboardingError}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={loading || !onboardingForm.formState.isValid}
+                  className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Starting chat…
+                    </span>
+                  ) : (
+                    'Start chatting'
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import * as react_jsx_runtime from 'react/jsx-runtime';
+import React from 'react';
 
 type AssistlyChatProps = {
     chatbotId: number;
@@ -26,6 +26,6 @@ type AssistlyChatProps = {
  * `--assistly-brass`, `--assistly-ink`, `--assistly-paper`, so the host
  * page can override them at any ancestor level.
  */
-declare function AssistlyChat({ chatbotId, origin, primaryColor, onReady, onError, }: AssistlyChatProps): react_jsx_runtime.JSX.Element | null;
+declare function AssistlyChat({ chatbotId, origin, primaryColor, onReady, onError, }: AssistlyChatProps): React.JSX.Element | null;
 
 export { AssistlyChat, type AssistlyChatProps };

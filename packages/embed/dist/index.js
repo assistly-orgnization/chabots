@@ -879,7 +879,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                   },
                   children: [
                     /* @__PURE__ */ jsx5(ArrowUpRight, { size: 10, strokeWidth: 1.8, style: { verticalAlign: "-1px", marginRight: 4 } }),
-                    "Powered by Assistly"
+                    "Powered by SMOEDESIGN"
                   ]
                 }
               ),

@@ -1,10 +1,131 @@
 import serverClient from "@/lib/server/serverClient"
 import { callGroqChat, callGroqChatStream } from "@/lib/groqPool"
-import { InsertMessage } from "@/qraphql/mutations/mutations"
-import { GET_CHATBOTS_by_ID } from "@/qraphql/queries/queries"
+import { InsertMessage, MARK_CHAT_SESSION_NOTIFIED } from "@/qraphql/mutations/mutations"
+import { GET_CHATBOTS_by_ID, GET_CHAT_SESSION_NOTIFICATION_CONTEXT } from "@/qraphql/queries/queries"
+import { sendAdminNewMessageDigest } from "@/lib/email"
 import type { GetChatbotByIdResponse, Message } from "@/types/types"
 import { gql } from "@apollo/client"
 import { type NextRequest } from "next/server"
+
+const IDLE_BEFORE_NOTIFY_MS = 5 * 60 * 1000
+
+function appBaseUrl(req: NextRequest): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL
+  if (explicit) return explicit
+  const envUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+  if (envUrl) {
+    return envUrl.startsWith("http") ? envUrl : `https://${envUrl}`
+  }
+  const origin = req.headers.get("origin")
+  if (origin) return origin
+  return "http://localhost:3000"
+}
+
+async function maybeNotifyAdmin({
+  chatSessionId,
+  chatbotId,
+  baseUrl,
+}: {
+  chatSessionId: number
+  chatbotId: number
+  baseUrl: string
+}): Promise<void> {
+  try {
+    console.log("[notify] start", { chatSessionId, chatbotId })
+    const { data } = await serverClient.query({
+      query: GET_CHAT_SESSION_NOTIFICATION_CONTEXT,
+      variables: { id: chatSessionId },
+    })
+    const ctx = (data as any)?.chat_sessions
+    if (!ctx) {
+      console.warn("[notify] no session context found", { chatSessionId })
+      return
+    }
+
+    // `last_notified_at` here is treated as a one-shot "already notified" flag:
+    // once set, we never email again for this session.
+    if (ctx.last_notified_at) {
+      console.log("[notify] session already notified, skipping", {
+        chatSessionId,
+        lastNotifiedAt: ctx.last_notified_at,
+      })
+      return
+    }
+
+    const allMessages = (ctx.messages ?? []).slice().sort(
+      (a: any, b: any) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    const lastMessage = allMessages[allMessages.length - 1]
+    if (!lastMessage) {
+      console.log("[notify] no messages yet, skipping", { chatSessionId })
+      return
+    }
+
+    const idleMs = Date.now() - new Date(lastMessage.created_at).getTime()
+    if (idleMs < IDLE_BEFORE_NOTIFY_MS) {
+      console.log("[notify] chat not idle yet, skipping", {
+        chatSessionId,
+        idleMs,
+        idleSec: Math.round(idleMs / 1000),
+      })
+      return
+    }
+
+    // Collect all user and AI messages for a fuller digest.
+    const transcript = allMessages
+      .map((m: any) => {
+        const who = m.sender === "user" ? "Guest" : "Assistant"
+        return `${who}: ${m.content}`
+      })
+      .join("\n\n")
+    const firstUserMessage = allMessages.find((m: any) => m.sender === "user")
+
+    if (!firstUserMessage) {
+      console.log("[notify] no user messages, skipping", { chatSessionId })
+      return
+    }
+
+    console.log("[notify] sending digest", {
+      chatSessionId,
+      messageCount: allMessages.length,
+      idleSec: Math.round(idleMs / 1000),
+    })
+
+    const guest = ctx.guests ?? {}
+    const chatbot = ctx.chatbots ?? { id: chatbotId, name: "your chatbot" }
+
+    const result = await sendAdminNewMessageDigest({
+      chatbotName: chatbot.name ?? "your chatbot",
+      guestName: guest.name ?? null,
+      guestEmail: guest.email ?? null,
+      latestUserMessage: firstUserMessage.content,
+      transcript,
+      sessionId: chatSessionId,
+      sessionCreatedAt: ctx.created_at,
+      appBaseUrl: baseUrl,
+    })
+
+    if (!result.ok) {
+      console.warn("[notify] email send failed:", result.error)
+      return
+    }
+
+    await serverClient.mutate({
+      mutation: MARK_CHAT_SESSION_NOTIFIED,
+      variables: {
+        id: chatSessionId,
+        chatbot_id: null,
+        created_at: null,
+        guest_id: null,
+        last_notified_at: new Date().toISOString(),
+      },
+    })
+    console.log("[notify] admin digest sent", { id: result.id, chatSessionId })
+  } catch (error) {
+    console.error("[notify] unexpected error:", error)
+  }
+}
 
 const MAX_PREVIOUS_MESSAGES = 20
 
@@ -204,12 +325,21 @@ Reminder: the PRIMARY RULE at the top of this prompt always wins. If the knowled
               sender: "ai",
             },
           })
+          const aiMessageId = aiMessage.data?.insertMessages?.id
           controller.enqueue(
             sseEvent("done", {
-              id: aiMessage.data?.insertMessages?.id,
+              id: aiMessageId,
               content: accumulated,
             }),
           )
+
+          // Fire-and-forget admin notification. The user response should not
+          // wait on email delivery; errors are logged inside the helper.
+          void maybeNotifyAdmin({
+            chatSessionId: chat_session_id,
+            chatbotId: chabot_id,
+            baseUrl: appBaseUrl(req),
+          })
         } catch (error) {
           console.error("Error persisting AI message:", error)
           controller.enqueue(
@@ -246,6 +376,13 @@ Reminder: the PRIMARY RULE at the top of this prompt always wins. If the knowled
         sender: "ai",
       },
     })
+
+    void maybeNotifyAdmin({
+      chatSessionId: chat_session_id,
+      chatbotId: chabot_id,
+      baseUrl: appBaseUrl(req),
+    })
+
     return new Response(
       JSON.stringify({
         id: aiMessage.data?.insertMessages?.id,

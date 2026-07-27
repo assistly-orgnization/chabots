@@ -148,6 +148,33 @@ export  const GET_MESSEGES_BY_CHAT_SESSION_ID= gql`
     created_at
   }
  }
- 
+
   }
  `
+
+export const GET_CHAT_SESSION_NOTIFICATION_CONTEXT = gql`
+  query GetChatSessionNotificationContext($id: Int!) {
+    chat_sessions(id: $id) {
+      id
+      created_at
+      last_notified_at
+      guest_id
+      chatbot_id
+      guests {
+        id
+        name
+        email
+      }
+      chatbots {
+        id
+        name
+      }
+      messages {
+        id
+        sender
+        content
+        created_at
+      }
+    }
+  }
+`
