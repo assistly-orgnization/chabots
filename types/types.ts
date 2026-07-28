@@ -97,15 +97,7 @@ chat_session_id:number,
 export interface AdminUser {
     id: number
     owner_clerk_user_id: string
-    invited_clerk_user_id: string | null
-    invited_email: string | null
+    invited_email: string
+    role: 'editor' | 'viewer'
     created_at: string
-}
-
-export interface InvitedAdminsResponse {
-    admin_usersListByOwner: AdminUser[]
-}
-
-export interface InvitesForUserResponse {
-    admin_usersAccessByInvitedUser: AdminUser[]
 }

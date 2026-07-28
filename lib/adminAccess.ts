@@ -1,10 +1,6 @@
 import serverClient from "@/lib/server/serverClient";
 import { gql } from "@apollo/client";
-import {
-  GET_EMAIL_PENDING_INVITES,
-  GET_INVITES_FOR_USER,
-} from "@/qraphql/queries/queries";
-import { findClerkUserIdByEmail } from "@/lib/clerkLookup";
+import sql from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 import type { AdminUser } from "@/types/types";
 
@@ -25,34 +21,11 @@ const GET_OWNED_CHATBOT_IDS = gql`
   }
 `;
 
-const BACKFILL_INVITED_USER_ID = gql`
-  mutation BackfillInvitedUserId(
-    $id: Int!
-    $owner_clerk_user_id: String
-    $invited_clerk_user_id: String
-    $invited_email: String
-    $created_at: DateTime
-  ) {
-    updateAdmin_users(
-      id: $id
-      owner_clerk_user_id: $owner_clerk_user_id
-      invited_clerk_user_id: $invited_clerk_user_id
-      invited_email: $invited_email
-      created_at: $created_at
-    ) {
-      id
-      invited_clerk_user_id
-    }
-  }
-`;
-
 /**
  * Returns true if `userId` is allowed to view chat sessions for `chatbotId`.
  * Allowed when:
  *   - The user is the chatbot owner (chatbots.clerk_user_id === userId), OR
- *   - The user has been invited by that owner. Matched first by
- *     invited_clerk_user_id, then by invited_email (covers invites sent
- *     before the invitee signed up with Clerk).
+ *   - The user's email is in admin_users invited by that owner.
  */
 export async function canReviewSessionsForChatbot(
   userId: string,
@@ -69,13 +42,9 @@ export async function canReviewSessionsForChatbot(
 /**
  * Returns true if the user owns at least one chatbot — used to gate
  * the /admin-users settings page.
- *
- * Tries the server-side tenant-scoped query first (`chatbotsListByClerkUserId`,
- * available after StepZen redeploys). Falls back to a full-list client-side
- * filter so the page still works against older StepZen deployments.
  */
 export async function isOwnerOfAnyChatbot(userId: string): Promise<boolean> {
-  // Preferred path: tenant-scoped server-side filter.
+  // Preferred path: tenant-scoped server-side filter via StepZen.
   try {
     const { data, errors } = await serverClient.query<{
       chatbotsListByClerkUserId: { id: number }[];
@@ -90,8 +59,7 @@ export async function isOwnerOfAnyChatbot(userId: string): Promise<boolean> {
     console.warn("[adminAccess] tenant-scoped query failed, falling back", error);
   }
 
-  // Fallback: enumerate all chatbots and filter client-side. Safe to keep
-  // even after StepZen is up to date — it just costs an extra DB read.
+  // Fallback: enumerate all chatbots and filter client-side.
   try {
     const { data } = await serverClient.query<{
       chatbotsList: { id: number; clerk_user_id: string }[];
@@ -105,7 +73,7 @@ export async function isOwnerOfAnyChatbot(userId: string): Promise<boolean> {
         }
       `,
     });
-    return (data?.chatbotsList ?? []).some((c) => c.clerk_user_id === userId);
+    return (data?.chatbotsList ?? []).some((c) => c?.clerk_user_id === userId);
   } catch (error) {
     console.error("[adminAccess] full-list fallback failed", error);
     return false;
@@ -113,7 +81,7 @@ export async function isOwnerOfAnyChatbot(userId: string): Promise<boolean> {
 }
 
 /**
- * Returns the owner of the chatbot, or null if the chatbot doesn't exist.
+ * Returns the owner clerk_user_id of the chatbot, or null if not found.
  */
 export async function getChatbotOwner(
   chatbotId: number,
@@ -128,78 +96,63 @@ export async function getChatbotOwner(
 }
 
 /**
- * Returns every invite that points at `userId` as the invited Clerk user.
- */
-export async function getInvitesForUser(userId: string): Promise<AdminUser[]> {
-  const { data } = await serverClient.query<{
-    admin_usersAccessByInvitedUser: AdminUser[];
-  }>({
-    query: GET_INVITES_FOR_USER,
-    variables: { invited_clerk_user_id: userId },
-  });
-  return data?.admin_usersAccessByInvitedUser ?? [];
-}
-
-/**
- * Returns the set of owner_clerk_user_ids that have invited this user
- * (matched by Clerk user_id OR by email for pre-signup invites).
+ * Returns the set of owner_clerk_user_ids that have invited this user.
+ * Access is matched purely by email — no Clerk user_id required on the invite.
  */
 export async function getOwnerIdsForUser(userId: string): Promise<Set<string>> {
   const ownerIds = new Set<string>();
 
-  // 1) Direct matches — invites created with invited_clerk_user_id === userId.
-  const direct = await getInvitesForUser(userId);
-  for (const invite of direct) ownerIds.add(invite.owner_clerk_user_id);
-
-  // 2) Email fallback — invites created before the user signed up. We look
-  //    up the user's primary email via Clerk and then query admin_users for
-  //    any invite whose invited_email matches.
   try {
+    // Look up the signed-in user's primary email via Clerk.
     const user = await currentUser();
     const email = user?.primaryEmailAddress?.emailAddress;
-    if (email) {
-      const lowerEmail = email.toLowerCase();
-      const { data } = await serverClient.query<{
-        admin_usersListByEmails: AdminUser[];
-      }>({
-        query: GET_EMAIL_PENDING_INVITES,
-        variables: { emails: [lowerEmail] },
-      });
-      const emailInvites = data?.admin_usersListByEmails ?? [];
-      for (const invite of emailInvites) {
-        ownerIds.add(invite.owner_clerk_user_id);
-      }
+    if (!email) return ownerIds;
 
-      // Back-fill pending invites (no invited_clerk_user_id set) so future
-      // lookups skip the Clerk round-trip.
-      const pending = emailInvites.filter((i) => !i.invited_clerk_user_id);
-      await Promise.all(
-        pending.map((i) =>
-          serverClient
-            .mutate({
-              mutation: BACKFILL_INVITED_USER_ID,
-              variables: {
-                id: i.id,
-                owner_clerk_user_id: i.owner_clerk_user_id,
-                invited_clerk_user_id: userId,
-                invited_email: i.invited_email,
-                created_at: i.created_at,
-              },
-            })
-            .catch((err) => {
-              console.warn("[adminAccess] backfill failed", err);
-            }),
-        ),
-      );
+    const lowerEmail = email.trim().toLowerCase();
+
+    // Query admin_users by email directly from NeonDB.
+    const rows = await sql`
+      SELECT owner_clerk_user_id, role
+      FROM admin_users
+      WHERE LOWER(invited_email) = ${lowerEmail}
+    ` as AdminUser[];
+
+    for (const invite of rows) {
+      ownerIds.add(invite.owner_clerk_user_id);
     }
   } catch (error) {
-    console.warn("[adminAccess] email fallback failed", error);
+    console.warn("[adminAccess] getOwnerIdsForUser failed", error);
   }
 
   return ownerIds;
 }
 
 /**
- * Resolve a Clerk email → user_id. Re-exported here for convenience.
+ * Returns the role of the invited user for a given owner's chatbots.
+ * Returns null if no invite exists.
  */
-export { findClerkUserIdByEmail };
+export async function getRoleForUser(
+  userId: string,
+  ownerClerkUserId: string,
+): Promise<"editor" | "viewer" | null> {
+  try {
+    const user = await currentUser();
+    const email = user?.primaryEmailAddress?.emailAddress;
+    if (!email) return null;
+
+    const lowerEmail = email.trim().toLowerCase();
+
+    const rows = await sql`
+      SELECT role FROM admin_users
+      WHERE LOWER(invited_email) = ${lowerEmail}
+        AND owner_clerk_user_id = ${ownerClerkUserId}
+      LIMIT 1
+    `;
+
+    if (!rows || rows.length === 0) return null;
+    return rows[0].role as "editor" | "viewer";
+  } catch (error) {
+    console.warn("[adminAccess] getRoleForUser failed", error);
+    return null;
+  }
+}

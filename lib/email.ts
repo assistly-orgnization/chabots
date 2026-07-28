@@ -24,8 +24,8 @@ if (!RESEND_API_KEY) {
 } else {
   console.log(
     "[email] resend client initialised (key present, prefix: " +
-      RESEND_API_KEY.slice(0, 6) +
-      "…)",
+    RESEND_API_KEY.slice(0, 6) +
+    "…)",
   );
 }
 
@@ -136,6 +136,72 @@ export async function sendAdminNewMessageDigest(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Resend error";
     console.error("[email] Failed to send admin digest:", message);
+    return { ok: false, error: message };
+  }
+}
+
+export type InviteEmailPayload = {
+  invitedEmail: string;
+  role: "editor" | "viewer";
+  appBaseUrl: string;
+};
+
+function buildInviteHtml(payload: InviteEmailPayload): string {
+  const signInUrl = `${payload.appBaseUrl.replace(/\/$/, "")}/sign-in`;
+  const roleLabel = payload.role === "editor" ? "Editor" : "Viewer";
+  const roleDesc =
+    payload.role === "editor"
+      ? "You can review chat sessions and manage chatbot settings."
+      : "You can view and download chat session data (read-only).";
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1e1e1e; line-height: 1.5;">
+      <h2 style="margin: 0 0 16px; font-size: 18px;">You've been invited to Assistly</h2>
+      <p style="margin: 0 0 16px;">
+        You have been added as a team member with the <strong>${roleLabel}</strong> role.
+      </p>
+      <p style="margin: 0 0 24px; color: #4b4b4b; font-size: 14px;">
+        ${roleDesc}
+      </p>
+      <p style="margin: 0 0 24px;">
+        <a href="${signInUrl}" style="display: inline-block; background: #1e1e1e; color: #faf6ef; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+          Sign in to Assistly
+        </a>
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #6b6b6b;">
+        Sign in using this email address (${escapeHtml(payload.invitedEmail)}) to access the dashboard.
+        If you don't have an account yet, create one with this email.
+      </p>
+    </div>
+  `.trim();
+}
+
+export async function sendInviteEmail(
+  payload: InviteEmailPayload,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (!resend) {
+    console.warn("[email] Resend not configured — skipping invite email.");
+    return { ok: false, error: "Resend API key not configured" };
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: payload.invitedEmail,
+      subject: "You've been invited to Assistly",
+      html: buildInviteHtml(payload),
+    });
+
+    if (error) {
+      console.error("[email] Resend invite error:", error);
+      return { ok: false, error: error.message ?? "Resend error" };
+    }
+
+    console.log("[email] Invite email sent", { id: data?.id, to: payload.invitedEmail });
+    return { ok: true, id: data?.id };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[email] Failed to send invite email:", message);
     return { ok: false, error: message };
   }
 }

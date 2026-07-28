@@ -186,6 +186,7 @@ export const GET_INVITED_ADMINS = gql`
       owner_clerk_user_id
       invited_clerk_user_id
       invited_email
+      role
       created_at
     }
   }
@@ -198,6 +199,7 @@ export const GET_INVITES_FOR_USER = gql`
       owner_clerk_user_id
       invited_clerk_user_id
       invited_email
+      role
       created_at
     }
   }
@@ -210,6 +212,7 @@ export const GET_EMAIL_PENDING_INVITES = gql`
       owner_clerk_user_id
       invited_clerk_user_id
       invited_email
+      role
       created_at
     }
   }

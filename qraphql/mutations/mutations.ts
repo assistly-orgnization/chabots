@@ -81,18 +81,21 @@ export const INVITE_ADMIN = gql`
     $owner_clerk_user_id: String!
     $invited_clerk_user_id: String
     $invited_email: String
+    $role: String!
     $created_at: DateTime!
   ) {
     insertAdmin_users(
       owner_clerk_user_id: $owner_clerk_user_id
       invited_clerk_user_id: $invited_clerk_user_id
       invited_email: $invited_email
+      role: $role
       created_at: $created_at
     ) {
       id
       owner_clerk_user_id
       invited_clerk_user_id
       invited_email
+      role
       created_at
     }
   }

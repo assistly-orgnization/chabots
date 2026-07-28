@@ -1,19 +1,18 @@
-import serverClient from "@/lib/server/serverClient";
-import { INVITE_ADMIN } from "@/qraphql/mutations/mutations";
+import sql from "@/lib/db";
 import { isOwnerOfAnyChatbot } from "@/lib/adminAccess";
-import { findClerkUserIdByEmail } from "@/lib/clerkLookup";
+import { sendInviteEmail } from "@/lib/email";
 import { auth } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 
+const VALID_ROLES = ["editor", "viewer"] as const;
+type Role = (typeof VALID_ROLES)[number];
+
 /**
  * POST /api/admin-users/invite
- * Body: { email: string }
+ * Body: { email: string; role?: 'editor' | 'viewer' }
  *
- * Owner-only. Adds a row to admin_users granting the address read-only access
- * to /review-sessions. Clerk user_id is left null until the invited user signs
- * up; the access helper matches by invited_email fallback at query time, but
- * currently matches by invited_clerk_user_id only — owners should pass the
- * Clerk user_id of the invitee when known.
+ * Owner-only. Inserts a row into admin_users directly via NeonDB SQL,
+ * bypassing StepZen entirely for this write operation.
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -23,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   if (!(await isOwnerOfAnyChatbot(userId))) {
     return NextResponse.json(
-      { error: "Only chatbot owners can invite admins" },
+      { error: "Only chatbot owners can invite team members" },
       { status: 403 },
     );
   }
@@ -33,9 +32,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { email, invited_clerk_user_id } = body as {
+  const { email, role: rawRole } = body as {
     email?: unknown;
-    invited_clerk_user_id?: unknown;
+    role?: unknown;
   };
 
   const trimmedEmail =
@@ -47,62 +46,50 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
 
-  // Resolve email → Clerk user_id. If the invitee hasn't signed up yet, we
-  // store the email and back-fill the user_id once they exist (the access
-  // helper also resolves email at check time).
-  let invitedUserId =
-    typeof invited_clerk_user_id === "string" && invited_clerk_user_id.length > 0
-      ? invited_clerk_user_id
-      : null;
-  if (!invitedUserId) {
-    try {
-      invitedUserId = await findClerkUserIdByEmail(trimmedEmail);
-    } catch (error) {
-      // Clerk lookup failure shouldn't block the invite — we still have the
-      // email address and can back-fill later.
-      console.warn("[/api/admin-users/invite] clerk lookup failed", error);
-    }
-  }
+  // Validate role — default to 'viewer' if not provided or invalid.
+  const role: Role =
+    typeof rawRole === "string" && VALID_ROLES.includes(rawRole as Role)
+      ? (rawRole as Role)
+      : "viewer";
 
   try {
-    const result = await serverClient.mutate({
-      mutation: INVITE_ADMIN,
-      variables: {
-        owner_clerk_user_id: userId,
-        invited_clerk_user_id: invitedUserId,
-        invited_email: trimmedEmail,
-        created_at: new Date().toISOString(),
-      },
-    });
+    // Direct SQL insert into NeonDB — no StepZen dependency for writes.
+    const rows = await sql`
+      INSERT INTO admin_users (owner_clerk_user_id, invited_email, role, created_at)
+      VALUES (${userId}, ${trimmedEmail}, ${role}, NOW())
+      ON CONFLICT (owner_clerk_user_id, invited_email) DO NOTHING
+      RETURNING id, owner_clerk_user_id, invited_email, role, created_at
+    `;
 
-    if (result.errors) {
-      const first = result.errors[0];
-      const message = first?.message ?? "GraphQL error";
-      console.error("[/api/admin-users/invite] graphql errors", {
-        errors: result.errors,
-        variables: {
-          owner_clerk_user_id: userId,
-          invited_clerk_user_id: invitedUserId,
-          invited_email: trimmedEmail,
-        },
-      });
-      // Unique constraint violation → friendly message.
-      if (/unique|duplicate/i.test(message)) {
-        return NextResponse.json(
-          { error: "This person is already invited" },
-          { status: 409 },
-        );
-      }
+    if (!rows || rows.length === 0) {
       return NextResponse.json(
-        { error: message, debug: result.errors },
-        { status: 400 }
+        { error: "This person is already invited" },
+        { status: 409 },
       );
     }
 
-    return NextResponse.json({ ok: true, admin: result.data?.insertAdmin_users });
+    // Send invitation email via Resend
+    const origin = req.headers.get("origin") || req.nextUrl.origin || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000";
+    await sendInviteEmail({
+      invitedEmail: trimmedEmail,
+      role,
+      appBaseUrl: origin,
+    }).catch((err) => {
+      console.error("[/api/admin-users/invite] failed to send invite email", err);
+    });
+
+    return NextResponse.json({ ok: true, admin: rows[0] });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[/api/admin-users/invite] error", message);
+    console.error("[/api/admin-users/invite] db error", message);
+
+    // Unique constraint violation fallback
+    if (/unique|duplicate/i.test(message)) {
+      return NextResponse.json(
+        { error: "This person is already invited" },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
