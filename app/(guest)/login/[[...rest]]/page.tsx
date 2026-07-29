@@ -1,8 +1,42 @@
 import Avatar from '@/components/ui/Avatar'
 import { SignIn } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import React from 'react'
 
-function LoginPage() {
+const INVITED_COOKIE = 'assistly_invited'
+const INVITED_MAX_AGE_SECONDS = 60 * 60 // 1 hour
+
+async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invited?: string }>
+}) {
+  const params = await searchParams
+  const isInvited = params.invited === '1'
+
+  if (isInvited) {
+    const { userId } = await auth()
+    if (userId) {
+      // Already signed in via a stale invite link — send straight to the destination.
+      redirect('/review-sessions')
+    }
+
+    const store = await cookies()
+    store.set({
+      name: INVITED_COOKIE,
+      value: '1',
+      maxAge: INVITED_MAX_AGE_SECONDS,
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: true,
+    })
+  }
+
+  const fallbackRedirectUrl = isInvited ? '/review-sessions' : '/'
+  const signUpUrl = isInvited ? '/sign-up?invited=1' : '/sign-up'
+
   return (
     <div className='flex py-10 md:py-0 flex-col flex-1 justify-center items-center bg-[#64B5F5] min-h-screen px-4'>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-5xl">
@@ -16,13 +50,13 @@ function LoginPage() {
     <h1 className="text-4xl">Assistly</h1>
 <h2 className="text-base font-light">
     Your Customisable AI Chat Agent
-</h2>
+    </h2>
 <h3 className="my-5 font-bold">
     Sign in to get started
-</h3>
+    </h3>
 </div>
             </div>
-            <SignIn fallbackRedirectUrl={"/"} signUpUrl="/sign-up" />
+            <SignIn fallbackRedirectUrl={fallbackRedirectUrl} signUpUrl={signUpUrl} />
         </div>
     </div>
   )
