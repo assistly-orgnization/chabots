@@ -1,56 +1,17 @@
-import { Resend } from "resend";
-
-function readResendKey(): string | undefined {
-  // Accept any casing of the env var. Vercel preserves case but some import
-  // pipelines lowercase names.
-  const candidates = [
-    process.env.RESEND_API_KEY,
-    process.env.RESEND_API_KEY,
-    process.env.resend_API_KEY,
-  ];
-  for (const value of candidates) {
-    const trimmed = value?.trim();
-    if (trimmed) return trimmed;
-  }
-  return undefined;
-}
-
-const RESEND_API_KEY = readResendKey();
-
-if (!RESEND_API_KEY) {
-  console.warn(
-    "[email] RESEND_API_KEY is not set — admin notifications will be skipped.",
-  );
-} else {
-  console.log(
-    "[email] resend client initialised (key present, prefix: " +
-    RESEND_API_KEY.slice(0, 6) +
-    "…)",
-  );
-}
-
-const rawFrom = (process.env.ADMIN_NOTIFY_FROM ?? "Assistly <onboarding@resend.dev>").trim();
-// Only accept `Name <addr@verified-domain>` form. If a bare email is supplied,
-// or the domain is one we know isn't verified (gmail/yahoo/outlook/hotmail),
-// fall back to Resend's built-in test sender so the API call doesn't fail
-// with "domain not verified".
-const UNVERIFIED_DOMAINS = /(@gmail\.|@yahoo\.|@outlook\.|@hotmail\.|@icloud\.)/i;
-const looksLikeResendTest = /onboarding@resend\.dev/i.test(rawFrom);
-const formattedFrom = /<.+@.+>/.test(rawFrom) ? rawFrom : `Assistly <${rawFrom}>`;
-const FROM_ADDRESS =
-  !looksLikeResendTest && UNVERIFIED_DOMAINS.test(formattedFrom)
-    ? "Assistly <onboarding@resend.dev>"
-    : formattedFrom;
-
-if (!looksLikeResendTest) {
-  console.log(
-    "[email] Using Resend test sender (onboarding@resend.dev) because the configured FROM address is on an unverified domain.",
-  );
-}
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY?.trim();
+const SENDGRID_FROM_EMAIL = (
+  process.env.SENDGRID_FROM_EMAIL ??
+  process.env.ADMIN_NOTIFY_EMAIL ??
+  "shaimaa.babeker95@gmail.com"
+).trim();
 
 const ADMIN_EMAIL = (process.env.ADMIN_NOTIFY_EMAIL ?? "shaimaaalmubarak00@gmail.com").trim();
 
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+if (!SENDGRID_API_KEY) {
+  console.warn("[email] SENDGRID_API_KEY is not set — email notifications will be skipped.");
+} else {
+  console.log("[email] SendGrid client initialized (SENDGRID_API_KEY present)");
+}
 
 export type AdminDigestPayload = {
   chatbotName: string;
@@ -61,6 +22,12 @@ export type AdminDigestPayload = {
   appBaseUrl: string;
 };
 
+export type InviteEmailPayload = {
+  invitedEmail: string;
+  role: "editor" | "viewer";
+  appBaseUrl: string;
+};
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
@@ -68,6 +35,50 @@ function escapeHtml(input: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * Send email via SendGrid REST API v3 (Native fetch, zero dependencies)
+ */
+async function sendViaSendGrid(options: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ ok: boolean; id?: string; error?: string }> {
+  if (!SENDGRID_API_KEY) {
+    console.error("[email] SendGrid API key not configured.");
+    return { ok: false, error: "SENDGRID_API_KEY not configured" };
+  }
+
+  try {
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: options.to }] }],
+        from: { email: SENDGRID_FROM_EMAIL, name: "Assistly" },
+        subject: options.subject,
+        content: [{ type: "text/html", value: options.html }],
+      }),
+    });
+
+    if (res.ok || res.status === 202) {
+      const messageId = res.headers.get("x-message-id") ?? "sg_ok";
+      console.log(`[email] SendGrid delivered to ${options.to}`, { id: messageId });
+      return { ok: true, id: messageId };
+    }
+
+    const errorData = await res.json().catch(() => ({}));
+    console.error("[email] SendGrid API error:", res.status, errorData);
+    return { ok: false, error: JSON.stringify(errorData) };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "SendGrid error";
+    console.error("[email] SendGrid exception:", msg);
+    return { ok: false, error: msg };
+  }
 }
 
 function buildDigestHtml(payload: AdminDigestPayload): string {
@@ -99,55 +110,8 @@ function buildDigestHtml(payload: AdminDigestPayload): string {
   `.trim();
 }
 
-export async function sendAdminNewMessageDigest(
-  payload: AdminDigestPayload,
-): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!resend) {
-    console.error(
-      "[email] Resend client not initialised — RESEND_API_KEY missing at module load.",
-    );
-    return { ok: false, error: "Resend API key not configured" };
-  }
-
-  const subject = `New chat session from ${payload.guestName?.trim() || "a visitor"} on ${payload.chatbotName}`;
-
-  console.log("[email] sending digest via Resend", {
-    from: FROM_ADDRESS,
-    to: ADMIN_EMAIL,
-    subject,
-    sessionId: payload.sessionId,
-  });
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: ADMIN_EMAIL,
-      subject,
-      html: buildDigestHtml(payload),
-    });
-
-    if (error) {
-      console.error("[email] Resend returned an error:", error);
-      return { ok: false, error: error.message ?? "Resend error" };
-    }
-
-    console.log("[email] Resend accepted the message", { id: data?.id });
-    return { ok: true, id: data?.id };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Resend error";
-    console.error("[email] Failed to send admin digest:", message);
-    return { ok: false, error: message };
-  }
-}
-
-export type InviteEmailPayload = {
-  invitedEmail: string;
-  role: "editor" | "viewer";
-  appBaseUrl: string;
-};
-
 function buildInviteHtml(payload: InviteEmailPayload): string {
-  const signInUrl = `${payload.appBaseUrl.replace(/\/$/, "")}/sign-in`;
+  const signInUrl = `${payload.appBaseUrl.replace(/\/$/, "")}/login?invited=1`;
   const roleLabel = payload.role === "editor" ? "Editor" : "Viewer";
   const roleDesc =
     payload.role === "editor"
@@ -176,32 +140,18 @@ function buildInviteHtml(payload: InviteEmailPayload): string {
   `.trim();
 }
 
+export async function sendAdminNewMessageDigest(
+  payload: AdminDigestPayload,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const subject = `New chat session from ${payload.guestName?.trim() || "a visitor"} on ${payload.chatbotName}`;
+  const html = buildDigestHtml(payload);
+  return sendViaSendGrid({ to: ADMIN_EMAIL, subject, html });
+}
+
 export async function sendInviteEmail(
   payload: InviteEmailPayload,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!resend) {
-    console.warn("[email] Resend not configured — skipping invite email.");
-    return { ok: false, error: "Resend API key not configured" };
-  }
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: payload.invitedEmail,
-      subject: "You've been invited to Assistly",
-      html: buildInviteHtml(payload),
-    });
-
-    if (error) {
-      console.error("[email] Resend invite error:", error);
-      return { ok: false, error: error.message ?? "Resend error" };
-    }
-
-    console.log("[email] Invite email sent", { id: data?.id, to: payload.invitedEmail });
-    return { ok: true, id: data?.id };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[email] Failed to send invite email:", message);
-    return { ok: false, error: message };
-  }
+  const subject = "You've been invited to Assistly";
+  const html = buildInviteHtml(payload);
+  return sendViaSendGrid({ to: payload.invitedEmail, subject, html });
 }
