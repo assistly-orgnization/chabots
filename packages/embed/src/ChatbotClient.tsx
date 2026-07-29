@@ -286,7 +286,6 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
           position: 'relative',
           zIndex: 1,
           flex: 1,
-          minHeight: "95vh",
           overflowY: 'auto',
           padding: '28px 20px 24px',
           background: 'transparent',
