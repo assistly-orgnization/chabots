@@ -68,8 +68,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Send invitation email via Resend
-    const origin = req.headers.get("origin") || req.nextUrl.origin || process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000";
+    // Send invitation email via SendGrid
+    // Prefer the explicitly configured public URL so the email link is never "localhost".
+    const origin =
+      process.env.NEXT_PUBLIC_VERCEL_URL ||
+      req.headers.get("origin") ||
+      req.nextUrl.origin ||
+      "http://localhost:3000";
     await sendInviteEmail({
       invitedEmail: trimmedEmail,
       role,

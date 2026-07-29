@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendAdminNewMessageDigest } from "@/lib/email";
 
 /**
- * Diagnostic endpoint. Hits Resend directly with a fake payload, no chat
+ * Diagnostic endpoint. Hits SendGrid directly with a fake payload, no chat
  * session, no StepZen, no DB. If this works, the email library is fine and
  * the bug is upstream in maybeNotifyAdmin / the chat flow.
  *

@@ -59,9 +59,9 @@ export default function AssistlyChat({
 
   const themeVars: React.CSSProperties = primaryColor
     ? ({
-        ['--assistly-brass' as any]: primaryColor,
-        ['--assistly-primary' as any]: primaryColor,
-      } as React.CSSProperties)
+      ['--assistly-brass' as any]: primaryColor,
+      ['--assistly-primary' as any]: primaryColor,
+    } as React.CSSProperties)
     : {};
 
   return (

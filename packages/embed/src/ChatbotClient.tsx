@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@apollo/client";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -44,6 +44,12 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [message, setMessage] = useState<Message[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to the latest message every time messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [message]);
 
   const messageForm = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
@@ -280,6 +286,7 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
           position: 'relative',
           zIndex: 1,
           flex: 1,
+          minHeight: "95vh",
           overflowY: 'auto',
           padding: '28px 20px 24px',
           background: 'transparent',
@@ -295,6 +302,8 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
           }}
         >
           <Messages messages={message} chatbotName={chatbotName} />
+          {/* Invisible anchor — scrolled into view whenever messages update */}
+          <div ref={bottomRef} style={{ height: 4 }} />
         </div>
       </main>
 
@@ -303,6 +312,7 @@ function ChatbotClient({ id, chatbotName, origin }: ChatbotClientProps) {
         style={{
           position: 'relative',
           zIndex: 1,
+          flexShrink: 0,
           padding: '16px 20px 22px',
           background: 'linear-gradient(180deg, rgba(245,241,232,0) 0%, var(--assistly-paper) 30%)',
           borderTop: '1px solid var(--assistly-hairline)',

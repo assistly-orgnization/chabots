@@ -51,7 +51,7 @@ function createApolloClient(origin) {
 }
 
 // src/ChatbotClient.tsx
-import { useEffect as useEffect2, useState as useState2 } from "react";
+import { useEffect as useEffect2, useRef as useRef2, useState as useState2 } from "react";
 import { useQuery } from "@apollo/client";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -409,6 +409,25 @@ function FormControl(_a) {
     }, props)
   );
 }
+function FormMessage(_a) {
+  var _b = _a, { className } = _b, props = __objRest(_b, ["className"]);
+  var _a2;
+  const { error, formMessageId } = useFormField();
+  const body = error ? String((_a2 = error == null ? void 0 : error.message) != null ? _a2 : "") : props.children;
+  if (!body) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx3(
+    "p",
+    __spreadProps(__spreadValues({
+      "data-slot": "form-message",
+      id: formMessageId,
+      className: cn("text-destructive text-sm", className)
+    }, props), {
+      children: body
+    })
+  );
+}
 
 // src/ui/input.tsx
 import { jsx as jsx4 } from "react/jsx-runtime";
@@ -429,29 +448,87 @@ function Input(_a) {
   );
 }
 
+// src/ui/button.tsx
+import { Slot as Slot2 } from "@radix-ui/react-slot";
+import { cva } from "class-variance-authority";
+import { jsx as jsx5 } from "react/jsx-runtime";
+var buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+        outline: "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline"
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-3",
+        icon: "size-9"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+);
+function Button(_a) {
+  var _b = _a, {
+    className,
+    variant,
+    size,
+    asChild = false
+  } = _b, props = __objRest(_b, [
+    "className",
+    "variant",
+    "size",
+    "asChild"
+  ]);
+  const Comp = asChild ? Slot2 : "button";
+  return /* @__PURE__ */ jsx5(
+    Comp,
+    __spreadValues({
+      "data-slot": "button",
+      className: cn(buttonVariants({ variant, size, className }))
+    }, props)
+  );
+}
+
 // src/ChatbotClient.tsx
-import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
-var formSchema = z.object({
-  message: z.string().min(3, "Your Message is too short!")
+import { Fragment, jsx as jsx6, jsxs as jsxs2 } from "react/jsx-runtime";
+var messageSchema = z.object({
+  message: z.string().min(1, "Please enter a message.")
+});
+var onboardingSchema = z.object({
+  name: z.string().trim().min(1, "Please enter your name."),
+  email: z.string().trim().email("Please enter a valid email address.")
 });
 function ChatbotClient({ id, chatbotName, origin }) {
   const [name, setName] = useState2("");
   const [email, setEmail] = useState2("");
-  const [onboardingStep, setOnboardingStep] = useState2(1);
   const [chatId, setChatId] = useState2(0);
   const [loading, setLoading] = useState2(false);
-  const [message, setMessage] = useState2([
-    {
-      id: -1,
-      content: `Hi there \u2014 I'm ${chatbotName}. I'd love to help, but first, what's your name?`,
-      sender: "ai",
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      chat_session_id: 0
-    }
-  ]);
-  const form = useForm({
-    resolver: zodResolver(formSchema),
+  const [onboardingError, setOnboardingError] = useState2(null);
+  const [showOnboarding, setShowOnboarding] = useState2(true);
+  const [message, setMessage] = useState2([]);
+  const bottomRef = useRef2(null);
+  useEffect2(() => {
+    var _a;
+    (_a = bottomRef.current) == null ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
+  }, [message]);
+  const messageForm = useForm({
+    resolver: zodResolver(messageSchema),
     defaultValues: { message: "" },
+    mode: "onChange"
+  });
+  const onboardingForm = useForm({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: { name: "", email: "" },
     mode: "onChange"
   });
   const { data } = useQuery(
@@ -459,7 +536,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
     { variables: { chat_session_id: chatId }, skip: !chatId }
   );
   useEffect2(() => {
-    if (data && onboardingStep === 3) {
+    if (data && chatId) {
       const chatSession = data.chat_sessions;
       const dbMessages = chatSession.messages || [];
       setMessage((prev) => {
@@ -468,75 +545,28 @@ function ChatbotClient({ id, chatbotName, origin }) {
         return [...prev, ...newMessages];
       });
     }
-  }, [data, onboardingStep]);
-  async function onsubmit(values) {
+  }, [data, chatId]);
+  async function onOnboardingSubmit(values) {
+    setOnboardingError(null);
+    setLoading(true);
+    try {
+      const newChatId = await startNewChat_default(origin, values.name, values.email, Number(id));
+      setName(values.name);
+      setEmail(values.email);
+      setChatId(newChatId);
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      setOnboardingError(
+        error instanceof Error ? error.message : "Sorry \u2014 I had trouble setting up your session. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function onMessageSubmit(values) {
     const { message: formMessage } = values;
-    form.reset();
-    if (onboardingStep === 1) {
-      if (!formMessage.trim()) return;
-      const userMsg = {
-        id: Date.now(),
-        content: formMessage,
-        chat_session_id: 0,
-        sender: "user",
-        created_at: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      const aiMsg = {
-        id: Date.now() + 1,
-        content: `Lovely to meet you, ${formMessage}. One more thing \u2014 what's your email so we can stay in touch?`,
-        chat_session_id: 0,
-        sender: "ai",
-        created_at: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      setName(formMessage);
-      setOnboardingStep(2);
-      setMessage((prev) => [...prev, userMsg, aiMsg]);
-      return;
-    }
-    if (onboardingStep === 2) {
-      if (!formMessage.trim()) return;
-      const isValidEmail = (email2) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email2);
-      if (!isValidEmail(formMessage.trim())) {
-        setMessage((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            content: "That email doesn't look quite right \u2014 could you double-check it?",
-            chat_session_id: 0,
-            sender: "ai",
-            created_at: (/* @__PURE__ */ new Date()).toISOString()
-          }
-        ]);
-        return;
-      }
-      const userMsg = {
-        id: Date.now(),
-        content: formMessage,
-        chat_session_id: 0,
-        sender: "user",
-        created_at: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      setMessage((prev) => [...prev, userMsg]);
-      setLoading(true);
-      try {
-        const newChatId = await startNewChat_default(origin, name, formMessage, Number(id));
-        setEmail(formMessage);
-        setChatId(newChatId);
-        setOnboardingStep(3);
-      } catch (error) {
-        console.error("Error starting chat:", error);
-        setMessage((prev) => [...prev, {
-          id: Date.now() + 1,
-          content: "Sorry \u2014 I had trouble setting up your session. Mind entering your email again?",
-          chat_session_id: 0,
-          sender: "ai",
-          created_at: (/* @__PURE__ */ new Date()).toISOString()
-        }]);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+    messageForm.reset();
     if (!chatId) return;
     const userMessage = {
       id: Date.now(),
@@ -591,7 +621,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
         overflow: "hidden"
       },
       children: [
-        /* @__PURE__ */ jsx5("div", { className: "assistly-grain" }),
+        /* @__PURE__ */ jsx6("div", { className: "assistly-grain" }),
         /* @__PURE__ */ jsxs2(
           "header",
           {
@@ -623,7 +653,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                     },
                     "aria-hidden": true,
                     children: [
-                      /* @__PURE__ */ jsx5(
+                      /* @__PURE__ */ jsx6(
                         "span",
                         {
                           style: {
@@ -636,7 +666,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                           children: chatbotName.charAt(0).toUpperCase()
                         }
                       ),
-                      /* @__PURE__ */ jsx5(
+                      /* @__PURE__ */ jsx6(
                         "span",
                         {
                           style: {
@@ -655,7 +685,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                   }
                 ),
                 /* @__PURE__ */ jsxs2("div", { style: { display: "flex", flexDirection: "column", minWidth: 0 }, children: [
-                  /* @__PURE__ */ jsx5(
+                  /* @__PURE__ */ jsx6(
                     "span",
                     {
                       className: "assistly-font-display",
@@ -685,7 +715,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                         gap: 6
                       },
                       children: [
-                        /* @__PURE__ */ jsx5(
+                        /* @__PURE__ */ jsx6(
                           "span",
                           {
                             style: {
@@ -721,7 +751,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                     borderRadius: 999
                   },
                   children: [
-                    /* @__PURE__ */ jsx5(ShieldCheck, { size: 12, strokeWidth: 1.6, style: { color: "var(--assistly-brass)" } }),
+                    /* @__PURE__ */ jsx6(ShieldCheck, { size: 12, strokeWidth: 1.6, style: { color: "var(--assistly-brass)" } }),
                     "Secure"
                   ]
                 }
@@ -729,7 +759,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
             ]
           }
         ),
-        /* @__PURE__ */ jsx5(
+        /* @__PURE__ */ jsx6(
           "main",
           {
             className: "assistly-scroll",
@@ -737,11 +767,12 @@ function ChatbotClient({ id, chatbotName, origin }) {
               position: "relative",
               zIndex: 1,
               flex: 1,
+              minHeight: "95vh",
               overflowY: "auto",
               padding: "28px 20px 24px",
               background: "transparent"
             },
-            children: /* @__PURE__ */ jsx5(
+            children: /* @__PURE__ */ jsxs2(
               "div",
               {
                 style: {
@@ -751,7 +782,10 @@ function ChatbotClient({ id, chatbotName, origin }) {
                   flexDirection: "column",
                   gap: 18
                 },
-                children: /* @__PURE__ */ jsx5(Messages_default, { messages: message, chatbotName })
+                children: [
+                  /* @__PURE__ */ jsx6(Messages_default, { messages: message, chatbotName }),
+                  /* @__PURE__ */ jsx6("div", { ref: bottomRef, style: { height: 4 } })
+                ]
               }
             )
           }
@@ -762,15 +796,16 @@ function ChatbotClient({ id, chatbotName, origin }) {
             style: {
               position: "relative",
               zIndex: 1,
+              flexShrink: 0,
               padding: "16px 20px 22px",
               background: "linear-gradient(180deg, rgba(245,241,232,0) 0%, var(--assistly-paper) 30%)",
               borderTop: "1px solid var(--assistly-hairline)"
             },
             children: [
-              /* @__PURE__ */ jsx5(Form, __spreadProps(__spreadValues({}, form), { children: /* @__PURE__ */ jsxs2(
+              /* @__PURE__ */ jsx6(Form, __spreadProps(__spreadValues({}, messageForm), { children: /* @__PURE__ */ jsxs2(
                 "form",
                 {
-                  onSubmit: form.handleSubmit(onsubmit),
+                  onSubmit: messageForm.handleSubmit(onMessageSubmit),
                   style: {
                     maxWidth: 760,
                     margin: "0 auto",
@@ -779,12 +814,12 @@ function ChatbotClient({ id, chatbotName, origin }) {
                     gap: 10
                   },
                   children: [
-                    /* @__PURE__ */ jsx5(
+                    /* @__PURE__ */ jsx6(
                       FormField,
                       {
-                        control: form.control,
+                        control: messageForm.control,
                         name: "message",
-                        render: ({ field }) => /* @__PURE__ */ jsx5(FormItem, { style: { flex: 1, margin: 0 }, children: /* @__PURE__ */ jsx5(FormControl, { children: /* @__PURE__ */ jsx5(
+                        render: ({ field }) => /* @__PURE__ */ jsx6(FormItem, { style: { flex: 1, margin: 0 }, children: /* @__PURE__ */ jsx6(FormControl, { children: /* @__PURE__ */ jsx6(
                           "div",
                           {
                             style: {
@@ -795,10 +830,10 @@ function ChatbotClient({ id, chatbotName, origin }) {
                               boxShadow: "0 1px 0 rgba(26,20,15,0.02), 0 6px 18px rgba(26,20,15,0.04)",
                               transition: "border-color 180ms ease, box-shadow 180ms ease"
                             },
-                            children: /* @__PURE__ */ jsx5(
+                            children: /* @__PURE__ */ jsx6(
                               Input,
                               __spreadProps(__spreadValues({}, field), {
-                                placeholder: onboardingStep === 1 ? "Your name\u2026" : onboardingStep === 2 ? "Your email\u2026" : "Write a message\u2026",
+                                placeholder: "Write a message\u2026",
                                 style: {
                                   width: "100%",
                                   padding: "14px 16px",
@@ -827,11 +862,11 @@ function ChatbotClient({ id, chatbotName, origin }) {
                         ) }) })
                       }
                     ),
-                    /* @__PURE__ */ jsx5(
+                    /* @__PURE__ */ jsx6(
                       "button",
                       {
                         type: "submit",
-                        disabled: form.formState.isSubmitting || !form.formState.isValid || loading,
+                        disabled: messageForm.formState.isSubmitting || !messageForm.formState.isValid || loading,
                         className: "assistly-send",
                         "aria-label": "Send message",
                         style: {
@@ -844,7 +879,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                           placeItems: "center",
                           flexShrink: 0
                         },
-                        children: loading ? /* @__PURE__ */ jsx5(
+                        children: loading ? /* @__PURE__ */ jsx6(
                           "span",
                           {
                             style: {
@@ -857,7 +892,7 @@ function ChatbotClient({ id, chatbotName, origin }) {
                               display: "inline-block"
                             }
                           }
-                        ) : /* @__PURE__ */ jsx5(Send, { size: 18, strokeWidth: 2 })
+                        ) : /* @__PURE__ */ jsx6(Send, { size: 18, strokeWidth: 2 })
                       }
                     )
                   ]
@@ -878,13 +913,226 @@ function ChatbotClient({ id, chatbotName, origin }) {
                     textAlign: "center"
                   },
                   children: [
-                    /* @__PURE__ */ jsx5(ArrowUpRight, { size: 10, strokeWidth: 1.8, style: { verticalAlign: "-1px", marginRight: 4 } }),
+                    /* @__PURE__ */ jsx6(ArrowUpRight, { size: 10, strokeWidth: 1.8, style: { verticalAlign: "-1px", marginRight: 4 } }),
                     "Powered by SMOEDESIGN"
                   ]
                 }
               ),
-              /* @__PURE__ */ jsx5("style", { children: `@keyframes assistly-spin { to { transform: rotate(360deg); } }` })
+              /* @__PURE__ */ jsx6("style", { children: `@keyframes assistly-spin { to { transform: rotate(360deg); } }` })
             ]
+          }
+        ),
+        showOnboarding && /* @__PURE__ */ jsx6(
+          "div",
+          {
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-labelledby": "assistly-onboarding-title",
+            style: {
+              position: "absolute",
+              inset: 0,
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(26,20,15,0.45)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              padding: 20
+            },
+            children: /* @__PURE__ */ jsxs2(
+              "div",
+              {
+                style: {
+                  width: "100%",
+                  maxWidth: 420,
+                  background: "var(--assistly-paper)",
+                  border: "1px solid var(--assistly-hairline-strong)",
+                  borderRadius: 18,
+                  boxShadow: "0 24px 60px rgba(26,20,15,0.18)",
+                  padding: "28px 28px 24px"
+                },
+                children: [
+                  /* @__PURE__ */ jsxs2("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }, children: [
+                    /* @__PURE__ */ jsx6(
+                      "div",
+                      {
+                        style: {
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: "var(--assistly-paper-2)",
+                          border: "1px solid var(--assistly-hairline-strong)",
+                          display: "grid",
+                          placeItems: "center",
+                          flexShrink: 0,
+                          fontFamily: "Fraunces, Georgia, serif",
+                          fontSize: 18,
+                          color: "var(--assistly-ink)"
+                        },
+                        "aria-hidden": true,
+                        children: chatbotName.charAt(0).toUpperCase()
+                      }
+                    ),
+                    /* @__PURE__ */ jsxs2("div", { style: { minWidth: 0 }, children: [
+                      /* @__PURE__ */ jsx6(
+                        "h2",
+                        {
+                          id: "assistly-onboarding-title",
+                          className: "assistly-font-display",
+                          style: {
+                            fontSize: 17,
+                            lineHeight: 1.2,
+                            color: "var(--assistly-ink)",
+                            margin: 0
+                          },
+                          children: "Welcome \u2014 let's get started"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxs2(
+                        "p",
+                        {
+                          className: "assistly-font-mono",
+                          style: {
+                            fontSize: 10,
+                            letterSpacing: "0.16em",
+                            textTransform: "uppercase",
+                            color: "var(--assistly-ink-mute)",
+                            margin: "4px 0 0"
+                          },
+                          children: [
+                            "Chatting with ",
+                            chatbotName
+                          ]
+                        }
+                      )
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ jsx6(Form, __spreadProps(__spreadValues({}, onboardingForm), { children: /* @__PURE__ */ jsxs2(
+                    "form",
+                    {
+                      onSubmit: onboardingForm.handleSubmit(onOnboardingSubmit),
+                      style: { display: "flex", flexDirection: "column", gap: 14 },
+                      children: [
+                        /* @__PURE__ */ jsx6(
+                          FormField,
+                          {
+                            control: onboardingForm.control,
+                            name: "name",
+                            render: ({ field }) => /* @__PURE__ */ jsxs2(FormItem, { style: { margin: 0 }, children: [
+                              /* @__PURE__ */ jsx6(FormControl, { children: /* @__PURE__ */ jsx6(
+                                Input,
+                                __spreadProps(__spreadValues({}, field), {
+                                  placeholder: "Name",
+                                  autoComplete: "name",
+                                  style: {
+                                    width: "100%",
+                                    padding: "12px 14px",
+                                    fontSize: 15,
+                                    color: "var(--assistly-ink)",
+                                    background: "#fffefb",
+                                    border: "1px solid var(--assistly-hairline-strong)",
+                                    borderRadius: 12,
+                                    outline: "none",
+                                    fontFamily: "inherit"
+                                  }
+                                })
+                              ) }),
+                              /* @__PURE__ */ jsx6(FormMessage, {})
+                            ] })
+                          }
+                        ),
+                        /* @__PURE__ */ jsx6(
+                          FormField,
+                          {
+                            control: onboardingForm.control,
+                            name: "email",
+                            render: ({ field }) => /* @__PURE__ */ jsxs2(FormItem, { style: { margin: 0 }, children: [
+                              /* @__PURE__ */ jsx6(FormControl, { children: /* @__PURE__ */ jsx6(
+                                Input,
+                                __spreadProps(__spreadValues({}, field), {
+                                  type: "email",
+                                  placeholder: "Email",
+                                  autoComplete: "email",
+                                  style: {
+                                    width: "100%",
+                                    padding: "12px 14px",
+                                    fontSize: 15,
+                                    color: "var(--assistly-ink)",
+                                    background: "#fffefb",
+                                    border: "1px solid var(--assistly-hairline-strong)",
+                                    borderRadius: 12,
+                                    outline: "none",
+                                    fontFamily: "inherit"
+                                  }
+                                })
+                              ) }),
+                              /* @__PURE__ */ jsx6(FormMessage, {})
+                            ] })
+                          }
+                        ),
+                        onboardingError && /* @__PURE__ */ jsx6(
+                          "p",
+                          {
+                            role: "alert",
+                            className: "assistly-font-mono",
+                            style: {
+                              fontSize: 11,
+                              color: "#a23a2a",
+                              margin: 0
+                            },
+                            children: onboardingError
+                          }
+                        ),
+                        /* @__PURE__ */ jsx6(
+                          Button,
+                          {
+                            type: "submit",
+                            disabled: loading || !onboardingForm.formState.isValid,
+                            className: "assistly-send",
+                            style: {
+                              width: "100%",
+                              height: 48,
+                              borderRadius: 12,
+                              border: "none",
+                              cursor: loading ? "wait" : "pointer",
+                              color: "var(--assistly-paper)",
+                              background: "var(--assistly-ink)",
+                              fontFamily: "inherit",
+                              fontSize: 14,
+                              fontWeight: 500,
+                              letterSpacing: "0.04em",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              marginTop: 4
+                            },
+                            children: loading ? /* @__PURE__ */ jsxs2(Fragment, { children: [
+                              /* @__PURE__ */ jsx6(
+                                "span",
+                                {
+                                  style: {
+                                    width: 14,
+                                    height: 14,
+                                    border: "2px solid rgba(245,241,232,0.35)",
+                                    borderTopColor: "var(--assistly-paper)",
+                                    borderRadius: "50%",
+                                    animation: "assistly-spin 0.9s linear infinite",
+                                    display: "inline-block"
+                                  }
+                                }
+                              ),
+                              "Starting chat\u2026"
+                            ] }) : "Start chatting"
+                          }
+                        )
+                      ]
+                    }
+                  ) }))
+                ]
+              }
+            )
           }
         )
       ]
@@ -1151,7 +1399,7 @@ var styles_default = `/* Assistly embed \u2014 base styles
 var styles_default2 = styles_default;
 
 // src/widget.tsx
-import { jsx as jsx6 } from "react/jsx-runtime";
+import { jsx as jsx7 } from "react/jsx-runtime";
 function AssistlyChat({
   chatbotId,
   origin,
@@ -1176,7 +1424,7 @@ function AssistlyChat({
     ["--assistly-brass"]: primaryColor,
     ["--assistly-primary"]: primaryColor
   } : {};
-  return /* @__PURE__ */ jsx6(ApolloProvider, { client, children: /* @__PURE__ */ jsx6(
+  return /* @__PURE__ */ jsx7(ApolloProvider, { client, children: /* @__PURE__ */ jsx7(
     "div",
     {
       className: "assistly-root",
@@ -1190,7 +1438,7 @@ function AssistlyChat({
         background: "var(--assistly-paper)",
         color: "var(--assistly-ink)"
       }, themeVars),
-      children: /* @__PURE__ */ jsx6(ChatbotClient_default, { id: String(chatbotId), chatbotName: "Assistant", origin })
+      children: /* @__PURE__ */ jsx7(ChatbotClient_default, { id: String(chatbotId), chatbotName: "Assistant", origin })
     }
   ) });
 }

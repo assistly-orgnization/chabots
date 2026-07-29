@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Message, MessagesbyChatSessionIdResponse, MessagesbyChatSessionIdResponseVariables } from "@/types/types";
 import startNewChat from "@/lib/startNewChat";
 import Avatar from "@/components/ui/Avatar";
@@ -33,6 +33,12 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [message, setMessage] = useState<Message[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to the bottom whenever messages change (new message or AI streaming)
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [message]);
 
   const messageForm = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
@@ -138,7 +144,7 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
 
   return (
     <div className="fixed inset-0 flex flex-col bg-gray-50 text-slate-900 md:p-6 md:pb-0">
-      <div className="flex flex-col w-full max-w-3xl mx-auto flex-1 overflow-hidden md:rounded-t-2xl border border-gray-200 bg-white relative">
+      <div className="flex flex-col w-full max-w-3xl mx-auto flex-1 overflow-hidden md:rounded-t-2xl border border-gray-200 bg-white">
         <div className="border-b border-gray-100 bg-white py-3 px-4 md:py-6 md:px-8 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3 md:space-x-4 min-w-0">
             <div className="relative shrink-0">
@@ -163,11 +169,13 @@ function ChatbotClient({ id, chatbotName }: { id: string, chatbotName: string })
           </div>
         </div>
 
-        <div className="flex-1 relative bg-white pb-32 md:pb-36 overflow-y-auto">
+        <div className="flex-1 bg-white overflow-y-auto">
           <Messages messages={message} chatbotName={chatbotName || ''} />
+          {/* Invisible anchor — scrolled into view whenever messages change */}
+          <div ref={bottomRef} className="h-4" />
         </div>
 
-        <div className="absolute bottom-0 w-full bg-white p-3 md:p-6 border-t border-gray-100">
+        <div className="shrink-0 w-full bg-white p-3 md:p-5 border-t border-gray-100">
           <Form {...messageForm}>
             <form
               className="relative flex items-center gap-2 md:gap-3 max-w-4xl mx-auto"

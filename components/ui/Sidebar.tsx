@@ -4,6 +4,8 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 import { BotMessageSquare, PencilLine, SearchIcon, Users, X, Menu } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
+type Role = 'owner' | 'editor' | 'viewer' | null
+
 const navItems = [
   {
     href: '/create-chatbot',
@@ -11,6 +13,7 @@ const navItems = [
     label: 'Create',
     sub: 'New Chatbot',
     id: 'create',
+    ownerOnly: true,
   },
   {
     href: '/view-chatbots',
@@ -18,6 +21,7 @@ const navItems = [
     label: 'Edit',
     sub: 'Manage Bots',
     id: 'edit',
+    ownerOnly: true,
   },
   {
     href: '/review-sessions',
@@ -25,6 +29,7 @@ const navItems = [
     label: 'View',
     sub: 'Chat History',
     id: 'review',
+    ownerOnly: false,
   },
   {
     href: '/admin-users',
@@ -32,8 +37,10 @@ const navItems = [
     label: 'Team',
     sub: 'Permissions',
     id: 'team',
+    ownerOnly: true,
   },
 ] as const
+
 
 /* -------------------------------------------------------------------------- */
 /*  Mobile sidebar — shared open/close state                                  */
@@ -73,9 +80,11 @@ export function MobileSidebarTrigger({ className = '' }: { className?: string })
   )
 }
 
-export function MobileSidebarOverlay() {
+export function MobileSidebarOverlay({ role }: { role?: Role }) {
   const { open, setOpen } = useMobileSidebar()
   const pathname = usePathname()
+  const isViewerLike = role === 'viewer' || role === 'editor'
+  const visibleItems = navItems.filter(item => !isViewerLike || !item.ownerOnly)
 
   if (!open) return null
 
@@ -99,7 +108,7 @@ export function MobileSidebarOverlay() {
           </button>
         </div>
         <nav className="flex-1 flex flex-col gap-2 p-3">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
@@ -135,15 +144,17 @@ export function MobileSidebarOverlay() {
 /*  Sidebar — desktop full sidebar + mobile icon strip                         */
 /* -------------------------------------------------------------------------- */
 
-export default function Sidebar() {
+export default function Sidebar({ role }: { role?: Role }) {
   const pathname = usePathname()
   const { setOpen } = useMobileSidebar()
+  const isViewerLike = role === 'viewer' || role === 'editor'
+  const visibleItems = navItems.filter(item => !isViewerLike || !item.ownerOnly)
 
   return (
     <>
       <aside className="hidden lg:flex flex-shrink-0 w-64 px-2 py-2">
         <nav className="h-full w-full flex flex-col gap-3 p-2 rounded-3xl bg-card/40 backdrop-blur-lg border border-border shadow-xl">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
@@ -183,7 +194,7 @@ export default function Sidebar() {
 
       <aside className="lg:hidden flex-shrink-0 w-20 flex flex-col items-center py-2">
         <nav className="h-full w-full flex flex-col gap-3 p-2 rounded-3xl bg-card/40 backdrop-blur-lg border border-border shadow-xl">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
@@ -208,7 +219,7 @@ export default function Sidebar() {
         </nav>
       </aside>
 
-      <MobileSidebarOverlay />
+      <MobileSidebarOverlay role={role} />
     </>
   )
 }

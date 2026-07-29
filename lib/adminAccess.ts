@@ -156,3 +156,41 @@ export async function getRoleForUser(
     return null;
   }
 }
+
+/**
+ * Returns the global role of the signed-in user:
+ *   'owner'  — owns at least one chatbot (full access)
+ *   'editor' — invited as editor but does not own any chatbot
+ *   'viewer' — invited as viewer but does not own any chatbot
+ *   null     — not invited anywhere, treat as fresh owner/no access
+ */
+export async function getMyGlobalRole(
+  userId: string,
+): Promise<"owner" | "editor" | "viewer" | null> {
+  const isOwner = await isOwnerOfAnyChatbot(userId);
+  if (isOwner) return "owner";
+
+  try {
+    const user = await currentUser();
+    const email = user?.primaryEmailAddress?.emailAddress;
+    if (!email) return null;
+
+    const lowerEmail = email.trim().toLowerCase();
+
+    const rows = await sql`
+      SELECT role FROM admin_users
+      WHERE LOWER(invited_email) = ${lowerEmail}
+      ORDER BY created_at DESC
+      LIMIT 1
+    ` as { role: string }[];
+
+    if (!rows || rows.length === 0) return null;
+    const role = rows[0].role;
+    if (role === "editor") return "editor";
+    if (role === "viewer") return "viewer";
+    return null;
+  } catch (error) {
+    console.warn("[adminAccess] getMyGlobalRole failed", error);
+    return null;
+  }
+}
