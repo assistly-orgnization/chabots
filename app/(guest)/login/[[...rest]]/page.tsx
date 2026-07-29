@@ -5,9 +5,6 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import React from 'react'
 
-const INVITED_COOKIE = 'assistly_invited'
-const INVITED_MAX_AGE_SECONDS = 60 * 60 // 1 hour
-
 async function LoginPage({
   searchParams,
 }: {
@@ -23,15 +20,13 @@ async function LoginPage({
       redirect('/review-sessions')
     }
 
+    // Cookie write must happen in a Route Handler, not a Server Component.
+    // If the invite marker cookie isn't set yet, round-trip through the handler
+    // to set it, then re-render with the URL flag preserved.
     const store = await cookies()
-    store.set({
-      name: INVITED_COOKIE,
-      value: '1',
-      maxAge: INVITED_MAX_AGE_SECONDS,
-      path: '/',
-      sameSite: 'lax',
-      httpOnly: true,
-    })
+    if (!store.get('assistly_invited')) {
+      redirect('/api/invite/mark?return=' + encodeURIComponent('/login?invited=1'))
+    }
   }
 
   const fallbackRedirectUrl = isInvited ? '/review-sessions' : '/'

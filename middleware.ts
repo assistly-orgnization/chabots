@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/send-message(.*)',
   '/api/graphql(.*)',
    '/api/start-chat(.*)',
+  '/api/invite/mark(.*)',
   '/login(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
